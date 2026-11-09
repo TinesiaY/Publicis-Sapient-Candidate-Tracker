@@ -104,7 +104,8 @@ def seed_database(engine: Engine) -> None:
     with session_factory() as session:
         for row in ROLES:
             session.execute(
-                sqlite_insert(Role).values(**row).on_conflict_do_nothing(index_elements=["name"])
+                # Job names are unique ignoring case, so skip any conflict rather than naming one column.
+                sqlite_insert(Role).values(**row).on_conflict_do_nothing()
             )
 
         for row in CANDIDATES:

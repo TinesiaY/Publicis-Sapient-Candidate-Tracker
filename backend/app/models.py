@@ -2,7 +2,7 @@
 
 from datetime import datetime, timezone
 
-from sqlalchemy import DDL, CheckConstraint, ForeignKey, Index, String, Text, UniqueConstraint, event
+from sqlalchemy import DDL, CheckConstraint, ForeignKey, Index, String, Text, UniqueConstraint, event, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db import Base, UTCDateTime
@@ -22,13 +22,25 @@ def _in_list(column: str, values: tuple[str, ...]) -> str:
 
 
 class Role(Base):
+    """A job that candidates can apply for, with its description."""
+
     __tablename__ = "roles"
+    __table_args__ = (
+        CheckConstraint(not_blank_sql("name"), name="ck_roles_name_not_blank"),
+        CheckConstraint(not_blank_sql("jd_text"), name="ck_roles_jd_text_not_blank"),
+        # Job names are unique ignoring case, so "back" and "Back" are the same job.
+        Index("uq_roles_name_lower", text("lower(name)"), unique=True),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    name: Mapped[str] = mapped_column(String(200), unique=True)
+    name: Mapped[str] = mapped_column(String(200))
     jd_text: Mapped[str] = mapped_column(Text)
 
     candidates: Mapped[list["Candidate"]] = relationship(back_populates="role")
+
+    @property
+    def candidate_count(self) -> int:
+        return len(self.candidates)
 
 
 class Candidate(Base):

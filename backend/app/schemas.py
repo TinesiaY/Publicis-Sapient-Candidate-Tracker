@@ -49,13 +49,35 @@ class CandidateCreate(BaseModel):
         return value.strip(BLANK_CHARACTERS) or None
 
 
+class RoleCreate(BaseModel):
+    """Fields accepted by POST /roles (sent as JSON)."""
+
+    name: str = Field(min_length=1, max_length=200)
+    jd_text: str
+
+    @field_validator("name", "jd_text")
+    @classmethod
+    def must_not_be_blank(cls, value: str) -> str:
+        _reject_nul(value)
+        if is_blank(value):
+            raise ValueError("must not be blank")
+        return value.strip(BLANK_CHARACTERS)
+
+
 class RoleSummary(BaseModel):
-    """One role in GET /roles."""
+    """One row in GET /roles."""
 
     model_config = ConfigDict(from_attributes=True)
 
     id: int
     name: str
+    candidate_count: int
+
+
+class RoleDetail(RoleSummary):
+    """GET /roles/{id} and the POST response. Adds the job description."""
+
+    jd_text: str
 
 
 class CandidateSummary(BaseModel):
