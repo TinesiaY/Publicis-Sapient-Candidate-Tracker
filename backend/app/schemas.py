@@ -1,14 +1,20 @@
-"""Request and response models for the candidate API."""
+"""Request and response models for the candidate API.
+
+These are separate from the ORM models in app/models.py. The database shape
+and the API shape are allowed to differ.
+"""
 
 from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.text_rules import BLANK_CHARACTERS, has_nul, is_blank
 
-def _blank_to_none(value: str | None) -> str | None:
-    if value is None:
-        return None
-    return value.strip() or None
+
+def _reject_nul(value: str) -> str:
+    if has_nul(value):
+        raise ValueError("must not contain null characters")
+    return value
 
 
 class CandidateCreate(BaseModel):
@@ -24,20 +30,23 @@ class CandidateCreate(BaseModel):
     @field_validator("name", "resume_text")
     @classmethod
     def must_not_be_blank(cls, value: str) -> str:
-        value = value.strip()
-        if not value:
+        _reject_nul(value)
+        if is_blank(value):
             raise ValueError("must not be blank")
-        return value
+        return value.strip(BLANK_CHARACTERS)
 
     @field_validator("email")
     @classmethod
     def normalise_email(cls, value: str) -> str:
-        return value.strip().lower()
+        return value.strip(BLANK_CHARACTERS).lower()
 
     @field_validator("phone", "source")
     @classmethod
     def blank_to_none(cls, value: str | None) -> str | None:
-        return _blank_to_none(value)
+        if value is None:
+            return None
+        _reject_nul(value)
+        return value.strip(BLANK_CHARACTERS) or None
 
 
 class CandidateSummary(BaseModel):

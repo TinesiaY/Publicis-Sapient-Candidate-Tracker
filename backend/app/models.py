@@ -5,7 +5,8 @@ from datetime import datetime, timezone
 from sqlalchemy import DDL, CheckConstraint, ForeignKey, Index, String, Text, UniqueConstraint, event
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.db import Base
+from app.db import Base, UTCDateTime
+from app.text_rules import not_blank_sql
 
 STAGES = ("Applied", "Screening", "Interview", "Offer", "Rejected")
 JOB_STATUSES = ("pending", "ready", "failed", "superseded")
@@ -37,7 +38,8 @@ class Candidate(Base):
         UniqueConstraint("email", "role_id", name="uq_candidates_email_role"),
         CheckConstraint("email = lower(email)", name="ck_candidates_email_lower"),
         CheckConstraint(_in_list("stage", STAGES), name="ck_candidates_stage"),
-        CheckConstraint("length(trim(resume_text)) > 0", name="ck_candidates_resume_not_empty"),
+        CheckConstraint(not_blank_sql("name"), name="ck_candidates_name_not_blank"),
+        CheckConstraint(not_blank_sql("resume_text"), name="ck_candidates_resume_not_blank"),
         Index("ix_candidates_role_stage", "role_id", "stage"),
     )
 
@@ -49,8 +51,8 @@ class Candidate(Base):
     source: Mapped[str | None] = mapped_column(String(100))
     stage: Mapped[str] = mapped_column(String(20), default="Applied")
     resume_text: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(default=utc_now)
-    archived_at: Mapped[datetime | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+    archived_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
     role: Mapped[Role] = relationship(back_populates="candidates")
     notes: Mapped[list["Note"]] = relationship(back_populates="candidate", order_by="Note.created_at")
@@ -60,13 +62,13 @@ class Candidate(Base):
 class Note(Base):
     __tablename__ = "notes"
     __table_args__ = (
-        CheckConstraint("length(trim(body)) > 0", name="ck_notes_body_not_empty"),
+        CheckConstraint(not_blank_sql("body"), name="ck_notes_body_not_blank"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     candidate_id: Mapped[int] = mapped_column(ForeignKey("candidates.id"))
     body: Mapped[str] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(default=utc_now)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
 
     candidate: Mapped[Candidate] = relationship(back_populates="notes")
 
@@ -108,7 +110,7 @@ class SummaryJob(Base):
     model: Mapped[str] = mapped_column(String(100))
     result_json: Mapped[str | None] = mapped_column(Text)
     error_code: Mapped[str | None] = mapped_column(String(50))
-    created_at: Mapped[datetime] = mapped_column(default=utc_now)
-    completed_at: Mapped[datetime | None] = mapped_column()
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+    completed_at: Mapped[datetime | None] = mapped_column(UTCDateTime())
 
     candidate: Mapped[Candidate] = relationship(back_populates="summary_jobs")

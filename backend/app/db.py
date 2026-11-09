@@ -1,8 +1,9 @@
 """Database engine, session factory and declarative base."""
 
+from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import create_engine, event
+from sqlalchemy import DateTime, TypeDecorator, create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
@@ -12,6 +13,28 @@ DATABASE_URL = f"sqlite:///{DB_PATH.as_posix()}"
 
 class Base(DeclarativeBase):
     pass
+
+
+class UTCDateTime(TypeDecorator):
+    """Store datetimes as UTC, and return them as timezone-aware UTC.
+
+    SQLite has no timezone type, so without this the offset is lost on read.
+    """
+
+    impl = DateTime
+    cache_ok = True
+
+    def process_bind_param(self, value, dialect):
+        if value is None:
+            return None
+        if value.tzinfo is None:
+            raise ValueError("datetimes must be timezone-aware before they are stored")
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+
+    def process_result_value(self, value, dialect):
+        if value is None:
+            return None
+        return value.replace(tzinfo=timezone.utc)
 
 
 def make_engine(url: str = DATABASE_URL, **kwargs) -> Engine:
