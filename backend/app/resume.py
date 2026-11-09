@@ -1,0 +1,1 @@
+"""Resume normalisation and hashing."""

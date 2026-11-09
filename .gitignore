@@ -11,3 +11,7 @@ dist/
 
 # Windows
 Thumbs.db
+
+# Local database
+data/
+*.db
