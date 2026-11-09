@@ -24,11 +24,12 @@ CANDIDATES = [
     {
         "name": "Ann Tan",
         "email": "ann.tan@example.com",
+        "phone": "+61 123 456 789",
         "role": "Backend Engineer",
         "source": "Referral",
         "stage": "Applied",
         "resume_text": """
-            Daniel Park
+            Ann Tan
             Software Engineer (Full-Stack)
             Melbourne, Australia
 
