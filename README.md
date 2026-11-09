@@ -16,6 +16,7 @@ Open two terminals in the project root.
 ```bash
 cd backend
 uv sync
+uv run python -m app.seed
 uv run uvicorn app.main:app --reload
 ```
 
@@ -34,6 +35,12 @@ Then open:
 - Backend API docs: http://127.0.0.1:8000/docs
 
 Stop either server with `Ctrl+C`.
+
+### Seed data
+
+The seed step creates `backend/data/app.db` with placeholder roles and candidates. It is safe to run again as rows that already exist are skipped. This means changes to data that already exists will not be send to the database.
+
+To start from a clean database, stop the backend, delete `backend/data/app.db`, and run `uv run python -m app.seed` again.
 
 ## Run tests
 
