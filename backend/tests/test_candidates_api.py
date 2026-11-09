@@ -3,27 +3,9 @@
 from datetime import datetime, timedelta
 
 import pytest
-from fastapi.testclient import TestClient
 from sqlalchemy.exc import IntegrityError
 
-from app.db import make_session_factory
-from app.deps import get_session
-from app.main import app
 from app.routers.candidates import _is_duplicate_application
-
-
-@pytest.fixture
-def client(engine):
-    session_factory = make_session_factory(engine)
-
-    def override_get_session():
-        with session_factory() as session:
-            yield session
-
-    app.dependency_overrides[get_session] = override_get_session
-    with TestClient(app) as test_client:
-        yield test_client
-    app.dependency_overrides.clear()
 
 
 def candidate_form(role_id, **overrides):
@@ -50,6 +32,7 @@ def test_valid_post_returns_201_and_lowercases_email(client, role_ids):
     assert body["email"] == "ann@example.com"
     assert body["stage"] == "Applied"
     assert body["phone"] is None
+    assert body["role_name"] == "Backend Engineer"
     assert body["resume_text"] == "Python developer, 2 years"
 
 
@@ -138,6 +121,7 @@ def test_list_returns_created_candidates_without_resume_text(client, role_ids):
     assert response.status_code == 200
     rows = response.json()
     assert [row["role_id"] for row in rows] == [role_ids["backend"], role_ids["frontend"]]
+    assert [row["role_name"] for row in rows] == ["Backend Engineer", "Frontend Engineer"]
     assert "resume_text" not in rows[0]
 
 
@@ -147,7 +131,9 @@ def test_detail_returns_candidate_with_resume_text(client, role_ids):
     response = client.get(f"/candidates/{created['id']}")
 
     assert response.status_code == 200
-    assert response.json()["resume_text"] == "Python developer, 2 years"
+    body = response.json()
+    assert body["resume_text"] == "Python developer, 2 years"
+    assert body["role_name"] == "Backend Engineer"
 
 
 def test_unknown_id_returns_404(client):

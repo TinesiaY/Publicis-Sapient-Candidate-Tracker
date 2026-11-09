@@ -49,6 +49,15 @@ class CandidateCreate(BaseModel):
         return value.strip(BLANK_CHARACTERS) or None
 
 
+class RoleSummary(BaseModel):
+    """One role in GET /roles."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    name: str
+
+
 class CandidateSummary(BaseModel):
     """One row in GET /candidates."""
 
@@ -61,6 +70,7 @@ class CandidateSummary(BaseModel):
     role_id: int
     source: str | None
     stage: str
+    role_name: str
     created_at: datetime
     archived_at: datetime | None
 

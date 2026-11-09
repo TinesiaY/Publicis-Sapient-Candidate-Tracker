@@ -58,6 +58,11 @@ class Candidate(Base):
     notes: Mapped[list["Note"]] = relationship(back_populates="candidate", order_by="Note.created_at")
     summary_jobs: Mapped[list["SummaryJob"]] = relationship(back_populates="candidate")
 
+    @property
+    def role_name(self) -> str:
+        """The role's name, so API responses can show it without a separate lookup."""
+        return self.role.name
+
 
 class Note(Base):
     __tablename__ = "notes"
