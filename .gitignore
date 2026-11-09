@@ -1,0 +1,13 @@
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+*.pyc
+.env
+
+# Node
+node_modules/
+dist/
+
+# Windows
+Thumbs.db
