@@ -5,12 +5,13 @@ import {
   ApiError,
   archiveCandidate,
   getCandidate,
+  getSummary,
   listNotes,
   replaceCandidateResume,
   restoreCandidate,
   updateCandidateStage,
 } from "../api/client"
-import type { CandidateDetail } from "../api/types"
+import type { CandidateDetail, SummaryRead } from "../api/types"
 import { CandidateDetailPage } from "./CandidateDetailPage"
 
 vi.mock("../api/client", async (importOriginal) => {
@@ -23,6 +24,9 @@ vi.mock("../api/client", async (importOriginal) => {
     restoreCandidate: vi.fn(),
     replaceCandidateResume: vi.fn(),
     listNotes: vi.fn(),
+    getSummary: vi.fn(),
+    retrySummary: vi.fn(),
+    regenerateSummary: vi.fn(),
   }
 })
 
@@ -51,9 +55,22 @@ const ACTIVE: CandidateDetail = {
 
 const ARCHIVED: CandidateDetail = { ...ACTIVE, archived_at: "2026-11-09T10:00:00Z" }
 
+const READY_SUMMARY: SummaryRead = {
+  status: "ready",
+  input_hash: "abc",
+  created_at: "2026-11-02T09:00:00Z",
+  provider_configured: true,
+  error_code: null,
+  summary: "Front-end developer with one year of React.",
+  skills: ["React"],
+  highlights: [],
+  suspicious_input: false,
+}
+
 beforeEach(() => {
   vi.mocked(getCandidate).mockResolvedValue(ACTIVE)
   vi.mocked(listNotes).mockResolvedValue([])
+  vi.mocked(getSummary).mockResolvedValue(READY_SUMMARY)
 })
 
 afterEach(() => {
@@ -213,5 +230,30 @@ describe("CandidateDetailPage", () => {
 
     expect((screen.getByRole("button", { name: "Replace resume" }) as HTMLButtonElement).disabled).toBe(true)
     expect(screen.getByText("Restore this candidate to replace their resume.")).toBeTruthy()
+  })
+
+  it("shows the resume summary for the candidate", async () => {
+    renderAt()
+
+    expect(await screen.findByText("Front-end developer with one year of React.")).toBeTruthy()
+    expect(getSummary).toHaveBeenCalledWith(7)
+  })
+
+  it("checks the summary again after the resume is replaced", async () => {
+    vi.mocked(replaceCandidateResume).mockResolvedValue({
+      ...ACTIVE,
+      resume_text: "Senior front-end developer, 5 years.",
+    })
+    renderAt()
+    await screen.findByRole("heading", { name: "Ben Lee" })
+    await waitFor(() => expect(getSummary).toHaveBeenCalledTimes(1))
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace resume" }))
+    fireEvent.change(screen.getByLabelText(/new resume/i), {
+      target: { value: "Senior front-end developer, 5 years." },
+    })
+    fireEvent.click(screen.getByRole("button", { name: "Save resume" }))
+
+    await waitFor(() => expect(getSummary).toHaveBeenCalledTimes(2))
   })
 })

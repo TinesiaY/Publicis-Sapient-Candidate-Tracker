@@ -6,7 +6,7 @@ from sqlalchemy import func, select
 from app.ai.provider import ProviderError
 from app.models import Candidate
 from app.resume import resume_hash
-from tests.helpers import ANN, SENIOR, create, job_rows, replace, retry, summary, valid_reply
+from tests.helpers import ANN, SENIOR, create, job_rows, regenerate, replace, retry, summary, valid_reply
 
 
 def test_saving_returns_at_once_and_the_summary_is_pending_until_the_worker_runs(client, provider, executor, role_ids):
@@ -158,3 +158,44 @@ def test_a_failure_while_recording_the_request_leaves_no_candidate_behind(client
 
     with client.app.state.session_factory() as session:
         assert session.scalar(select(func.count()).select_from(Candidate)) == 0
+
+
+def test_regenerate_runs_the_provider_again_even_when_a_ready_result_exists(client, provider, executor, role_ids):
+    provider.add_reply(valid_reply("First summary."))
+    provider.add_reply(valid_reply("Regenerated summary."))
+    candidate_id = create(client, role_ids["backend"])
+    executor.run_queued()
+
+    response = regenerate(client, candidate_id)
+
+    assert response.status_code == 202
+    assert response.json()["status"] == "pending"
+    executor.run_queued()
+    assert summary(client, candidate_id).json()["summary"] == "Regenerated summary."
+    assert len(provider.calls) == 2
+    # The earlier result stays in the history.
+    assert [row["status"] for row in job_rows(client, candidate_id)] == ["ready", "ready"]
+
+
+def test_regenerate_is_refused_with_409_unless_the_summary_is_ready(client, provider, executor, role_ids):
+    provider.add_reply(ProviderError("provider_error"))
+    candidate_id = create(client, role_ids["backend"])
+
+    assert regenerate(client, candidate_id).status_code == 409  # Still pending.
+
+    executor.run_queued()  # Now failed.
+    response = regenerate(client, candidate_id)
+    assert response.status_code == 409
+    assert response.json()["detail"] == "Only a ready summary can be regenerated"
+
+
+def test_regenerate_on_an_archived_candidate_is_refused_with_409(client, provider, executor, role_ids):
+    provider.add_reply(valid_reply())
+    candidate_id = create(client, role_ids["backend"])
+    executor.run_queued()
+    assert client.post(f"/candidates/{candidate_id}/archive").status_code == 200
+
+    response = regenerate(client, candidate_id)
+
+    assert response.status_code == 409
+    assert "Restore this candidate" in response.json()["detail"]

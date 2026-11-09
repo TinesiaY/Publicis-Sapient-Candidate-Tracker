@@ -26,6 +26,7 @@ def provider_whose_call_raises(error: Exception) -> GeminiProvider:
         (errors.ClientError(429, {"error": {"code": 429, "message": "Quota exceeded", "status": "RESOURCE_EXHAUSTED"}}), "rate_limited"),
         (errors.ClientError(400, {"error": {"code": 400, "message": "Bad request", "status": "INVALID_ARGUMENT"}}), "provider_error"),
         (errors.ServerError(503, {"error": {"code": 503, "message": "Unavailable", "status": "UNAVAILABLE"}}), "provider_error"),
+        (errors.ServerError(504, {"error": {"code": 504, "message": "Deadline expired", "status": "DEADLINE_EXCEEDED"}}), "provider_timeout"),
         (httpx.ReadTimeout("the reply took too long"), "provider_timeout"),
         (RuntimeError("something unexpected"), "provider_error"),
     ],

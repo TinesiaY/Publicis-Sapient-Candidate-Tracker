@@ -25,6 +25,11 @@ def get_worker(request: Request) -> SummaryWorker:
     return request.app.state.worker
 
 
+def get_provider_configured(request: Request) -> bool:
+    """True when the server was started with a Gemini key."""
+    return request.app.state.provider_configured
+
+
 def get_clock() -> datetime:
     """The current time. Tests replace this to move the clock forward."""
     return utc_now()

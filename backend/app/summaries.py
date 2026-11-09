@@ -13,11 +13,13 @@ from app.models import Candidate, SummaryJob
 from app.resume import resume_hash
 
 
-def request_summary(session: Session, candidate: Candidate) -> int | None:
+def request_summary(session: Session, candidate: Candidate, *, force: bool = False) -> int | None:
     """Ask for a summary of the candidate's current resume. The caller commits, then submits the job.
 
     Returns the id of the new pending job, or None when a pending or ready job already covers this
     request and nothing new was recorded. Pending requests for anything else are superseded.
+
+    force=True records a new request even when a ready result exists. Regenerate uses it.
     """
     current_hash = resume_hash(candidate.resume_text)
     same_request = and_(
@@ -39,15 +41,16 @@ def request_summary(session: Session, candidate: Candidate) -> int | None:
         .execution_options(synchronize_session="fetch")
     )
 
-    existing = session.scalar(
-        select(SummaryJob.id).where(
-            SummaryJob.candidate_id == candidate.id,
-            SummaryJob.status.in_(("pending", "ready")),
-            same_request,
+    if not force:
+        existing = session.scalar(
+            select(SummaryJob.id).where(
+                SummaryJob.candidate_id == candidate.id,
+                SummaryJob.status.in_(("pending", "ready")),
+                same_request,
+            )
         )
-    )
-    if existing is not None:
-        return None
+        if existing is not None:
+            return None
 
     job = SummaryJob(
         candidate_id=candidate.id,
@@ -55,6 +58,7 @@ def request_summary(session: Session, candidate: Candidate) -> int | None:
         input_hash=current_hash,
         prompt_version=PROMPT_VERSION,
         model=SUMMARY_MODEL,
+        forced=force,
     )
     session.add(job)
     session.flush()  # Assigns the id, so the caller can submit the job after the commit.

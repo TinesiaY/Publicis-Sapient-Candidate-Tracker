@@ -6,6 +6,7 @@ dependencies = [
     "email-validator>=2.3.0",
     "fastapi>=0.162.2",
     "google-genai>=3.0.0",
+    "python-dotenv>=1.2.4",
     "python-multipart>=0.0.33",
     "sqlalchemy>=2.1.8",
     "uvicorn[standard]>=0.54.0",

@@ -9,6 +9,7 @@ import { Avatar } from "../components/Avatar"
 import { NotesPanel } from "../components/NotesPanel"
 import { ReplaceResumePanel } from "../components/ReplaceResumePanel"
 import { StageBadge } from "../components/StageBadge"
+import { SummaryPanel } from "../components/SummaryPanel"
 import { formatDate } from "../lib/format"
 
 function messageOf(error: unknown, fallback: string): string {
@@ -37,6 +38,8 @@ function CandidateDetailContent({ candidateId: id }: { candidateId: number }) {
   const [archiveBusy, setArchiveBusy] = useState(false)
   const [archiveError, setArchiveError] = useState("")
   const [replacingResume, setReplacingResume] = useState(false)
+  // Goes up by one after a resume is replaced, so the summary panel checks the new resume.
+  const [summaryVersion, setSummaryVersion] = useState(0)
 
   useEffect(() => {
     let current = true
@@ -303,6 +306,7 @@ function CandidateDetailContent({ candidateId: id }: { candidateId: number }) {
               onSaved={(updated) => {
                 setCandidate(updated)
                 setReplacingResume(false)
+                setSummaryVersion((version) => version + 1)
               }}
               onCancel={() => setReplacingResume(false)}
             />
@@ -312,10 +316,11 @@ function CandidateDetailContent({ candidateId: id }: { candidateId: number }) {
         </section>
 
         <div className="space-y-6">
-          <section className="rounded-xl border border-dashed border-line bg-white p-6">
-            <h2 className="text-lg font-semibold">Resume summary</h2>
-            <p className="mt-2 text-sm text-muted">AI summaries arrive in a later milestone.</p>
-          </section>
+          <SummaryPanel
+            key={`${candidate.id}-${summaryVersion}`}
+            candidateId={candidate.id}
+            isArchived={isArchived}
+          />
           <NotesPanel key={candidate.id} candidateId={candidate.id} />
         </div>
       </div>

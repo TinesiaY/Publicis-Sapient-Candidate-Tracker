@@ -9,7 +9,9 @@ import os
 from collections.abc import AsyncIterator
 from concurrent.futures import Executor, ThreadPoolExecutor
 from contextlib import asynccontextmanager
+from pathlib import Path
 
+from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import sessionmaker
@@ -23,6 +25,9 @@ from app.routers import candidates, notes, roles, summaries
 from app.worker import SummaryWorker
 
 logger = logging.getLogger(__name__)
+
+# Read backend/.env, so the Gemini key can be kept there. A variable already set in the environment takes precedence.
+load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 def create_app(
@@ -52,6 +57,8 @@ def create_app(
 
     app = FastAPI(title="Candidate Tracker API", lifespan=lifespan)
     app.state.session_factory = factory
+    # The UI uses this to decide whether a summary that failed without a key can be retried now.
+    app.state.provider_configured = not isinstance(provider, NotConfiguredProvider)
 
     app.add_middleware(
         CORSMiddleware,

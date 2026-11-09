@@ -39,6 +39,7 @@ def run_summary_job(session: Session, job_id: int, provider: SummaryProvider) ->
         return finish_job(session, job, "superseded", completed_at=utc_now())
 
     # A ready result for the same resume, prompt and model is reused, so the provider is not called again.
+    # A regenerate request skips this, because it asks for a new result.
     reusable = session.scalar(
         select(SummaryJob)
         .where(
@@ -52,7 +53,7 @@ def run_summary_job(session: Session, job_id: int, provider: SummaryProvider) ->
         .order_by(SummaryJob.id.desc())
         .limit(1)
     )
-    if reusable is not None:
+    if not job.forced and reusable is not None:
         return finish_job(session, job, "ready", result_json=reusable.result_json, completed_at=utc_now())
 
     system, prompt = build_prompt(resume_text)

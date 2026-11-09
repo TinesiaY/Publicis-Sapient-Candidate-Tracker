@@ -136,6 +136,8 @@ class SummaryJob(Base):
     input_hash: Mapped[str] = mapped_column(String(64))
     prompt_version: Mapped[str] = mapped_column(String(20))
     model: Mapped[str] = mapped_column(String(100))
+    # True for a regenerate request. A regenerated job is run even when a ready result already exists.
+    forced: Mapped[bool] = mapped_column(default=False)
     result_json: Mapped[str | None] = mapped_column(Text)
     error_code: Mapped[str | None] = mapped_column(String(50))
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)

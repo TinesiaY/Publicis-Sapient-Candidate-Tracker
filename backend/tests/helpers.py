@@ -44,6 +44,10 @@ def retry(client, candidate_id: int):
     return client.post(f"/candidates/{candidate_id}/summary/retry")
 
 
+def regenerate(client, candidate_id: int):
+    return client.post(f"/candidates/{candidate_id}/summary/regenerate")
+
+
 def job_rows(client, candidate_id: int) -> list[dict]:
     """The candidate's jobs, oldest first, read straight from the database."""
     with client.app.state.session_factory() as session:

@@ -63,3 +63,24 @@ export interface Note {
   body: string
   created_at: string
 }
+
+export type SummaryStatus = "pending" | "ready" | "failed"
+
+export interface SummaryHighlight {
+  text: string
+  quote: string
+}
+
+// GET /candidates/{id}/summary. The result fields are null unless the status is ready.
+export interface SummaryRead {
+  status: SummaryStatus
+  input_hash: string
+  created_at: string
+  // False when the server has no Gemini key.
+  provider_configured: boolean
+  error_code: string | null
+  summary: string | null
+  skills: string[] | null
+  highlights: SummaryHighlight[] | null
+  suspicious_input: boolean | null
+}

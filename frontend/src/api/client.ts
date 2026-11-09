@@ -8,6 +8,7 @@ import type {
   Role,
   RoleDetail,
   StageName,
+  SummaryRead,
 } from "./types"
 import type { ResumeInputValue } from "../lib/validateCandidate"
 
@@ -126,6 +127,21 @@ export function replaceCandidateResume(candidateId: number, resume: ResumeInputV
   const data = new FormData()
   appendResume(data, resume)
   return request<CandidateDetail>(`/candidates/${candidateId}/resume`, { method: "PUT", body: data })
+}
+
+// The summary of the candidate's current resume. The server times out a pending job after three minutes.
+export function getSummary(candidateId: number): Promise<SummaryRead> {
+  return request<SummaryRead>(`/candidates/${candidateId}/summary`)
+}
+
+// Retries a failed summary. The server refuses it for an archived candidate.
+export function retrySummary(candidateId: number): Promise<SummaryRead> {
+  return request<SummaryRead>(`/candidates/${candidateId}/summary/retry`, { method: "POST" })
+}
+
+// Runs a ready summary again, for the same resume. The server refuses it for an archived candidate.
+export function regenerateSummary(candidateId: number): Promise<SummaryRead> {
+  return request<SummaryRead>(`/candidates/${candidateId}/summary/regenerate`, { method: "POST" })
 }
 
 // Newest first, as the backend returns them.

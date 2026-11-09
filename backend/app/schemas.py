@@ -156,6 +156,8 @@ class SummaryRead(BaseModel):
     status: str
     input_hash: str
     created_at: datetime
+    # False when the server has no Gemini key. A failed summary is then not retried, because it would fail again.
+    provider_configured: bool
     error_code: str | None = None
     summary: str | None = None
     skills: list[str] | None = None
