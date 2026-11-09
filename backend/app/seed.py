@@ -7,6 +7,8 @@ Run from the backend folder:
 Running it again changes nothing, because duplicate rows are skipped.
 """
 
+from datetime import datetime, timezone
+
 from sqlalchemy import func, select
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.engine import Engine
@@ -92,6 +94,35 @@ CANDIDATES = [
         "stage": "Screening",
         # Deliberately short: short resumes must still be accepted.
         "resume_text": "Front-end developer, 1 year. React, TypeScript.",
+    },
+    # Archived samples. They are hidden from Candidates and shown on the Archive page.
+    # Each keeps its stage, and archived_at is the time it was archived.
+    {
+        "name": "Charlotte Lee",
+        "email": "charlotte.lee@example.com",
+        "role": "Frontend Engineer",
+        "source": "Careers page",
+        "stage": "Rejected",
+        "resume_text": "Frontend developer, 3 years. React, accessibility, design systems.",
+        "archived_at": datetime(2026, 11, 7, 10, 30, tzinfo=timezone.utc),
+    },
+    {
+        "name": "Marcus Johnson",
+        "email": "marcus.johnson@example.com",
+        "role": "Backend Engineer",
+        "source": "Wellfound",
+        "stage": "Interview",
+        "resume_text": "Backend developer, 4 years. Python, PostgreSQL, message queues.",
+        "archived_at": datetime(2026, 11, 6, 9, 15, tzinfo=timezone.utc),
+    },
+    {
+        "name": "Grace Park",
+        "email": "grace.park@example.com",
+        "role": "Frontend Engineer",
+        "source": "LinkedIn",
+        "stage": "Applied",
+        "resume_text": "Junior front-end developer. HTML, CSS, JavaScript.",
+        "archived_at": datetime(2026, 11, 4, 14, 0, tzinfo=timezone.utc),
     },
 ]
 
