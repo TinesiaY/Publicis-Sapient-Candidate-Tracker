@@ -1,8 +1,8 @@
-"""Candidate endpoints: create, list, count, view, change stage, archive and restore."""
+"""Candidate endpoints: create, list, count, view, change stage, archive, restore and replace the resume."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException, Query
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -10,7 +10,9 @@ from sqlalchemy.orm import Session
 from app.deps import find_candidate, get_session
 from app.models import Candidate, Role, Stage, utc_now
 from app.queries import SortOrder, candidate_list_query, stage_counts
+from app.resume_input import resolve_resume
 from app.schemas import CandidateCounts, CandidateCreate, CandidateDetail, CandidateSummary, StageUpdate
+from app.summaries import request_summary
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -19,6 +21,7 @@ ARCHIVED_DUPLICATE_MESSAGE = (
     "This candidate is archived for this role. Restore them from the archive instead of adding them again."
 )
 ARCHIVED_STAGE_MESSAGE = "Restore this candidate before changing their stage"
+ARCHIVED_RESUME_MESSAGE = "Restore this candidate before replacing their resume"
 
 
 def _is_duplicate_application(error: IntegrityError) -> bool:
@@ -33,9 +36,13 @@ def _is_duplicate_application(error: IntegrityError) -> bool:
 @router.post("", status_code=201, response_model=CandidateDetail)
 def create_candidate(
     data: Annotated[CandidateCreate, Form()],
+    resume_file: UploadFile | None = File(None),
     session: Session = Depends(get_session),
 ) -> Candidate:
-    # Check the role first, so a bad role_id gives a clear error and not a foreign-key failure.
+    # Check the resume input first, so a bad upload is reported before any database lookup.
+    resume = resolve_resume(data.resume_text, resume_file)
+
+    # Check the role next, so a bad role_id gives a clear error and not a foreign-key failure.
     if session.get(Role, data.role_id) is None:
         raise HTTPException(status_code=422, detail="Unknown role_id")
 
@@ -50,9 +57,12 @@ def create_candidate(
         message = ARCHIVED_DUPLICATE_MESSAGE if existing.archived_at is not None else DUPLICATE_MESSAGE
         raise HTTPException(status_code=409, detail=message)
 
-    candidate = Candidate(**data.model_dump())
+    candidate = Candidate(**data.model_dump(exclude={"resume_text"}), resume_text=resume)
     session.add(candidate)
     try:
+        # The candidate and its summary request are saved together, or not at all.
+        session.flush()
+        request_summary(session, candidate)
         session.commit()
     except IntegrityError as error:
         session.rollback()
@@ -110,6 +120,25 @@ def change_stage(
 
     # Only the stage changes. The creation date, resume and notes are left alone.
     candidate.stage = data.stage.value
+    session.commit()
+    session.refresh(candidate)
+    return candidate
+
+
+@router.put("/{candidate_id}/resume", response_model=CandidateDetail)
+def replace_resume(
+    candidate_id: int,
+    resume_text: Annotated[str | None, Form()] = None,
+    resume_file: UploadFile | None = File(None),
+    session: Session = Depends(get_session),
+) -> Candidate:
+    candidate = find_candidate(session, candidate_id)
+    if candidate.archived_at is not None:
+        raise HTTPException(status_code=409, detail=ARCHIVED_RESUME_MESSAGE)
+
+    # Only the resume and its summary request change. Stage, creation date and notes are left alone.
+    candidate.resume_text = resolve_resume(resume_text, resume_file)
+    request_summary(session, candidate)
     session.commit()
     session.refresh(candidate)
     return candidate

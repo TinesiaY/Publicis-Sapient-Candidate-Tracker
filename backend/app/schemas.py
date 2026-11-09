@@ -26,9 +26,10 @@ class CandidateCreate(BaseModel):
     role_id: int
     phone: str | None = Field(default=None, max_length=50)
     source: str | None = Field(default=None, max_length=100)
-    resume_text: str
+    # Exactly one of pasted text or an uploaded file is required. resolve_resume checks that.
+    resume_text: str | None = None
 
-    @field_validator("name", "resume_text")
+    @field_validator("name")
     @classmethod
     def must_not_be_blank(cls, value: str) -> str:
         _reject_nul(value)
