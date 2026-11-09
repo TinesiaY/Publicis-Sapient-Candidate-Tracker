@@ -8,8 +8,11 @@ import { StageBadge } from "../components/StageBadge"
 
 export function JobDetailPage() {
   const { jobId } = useParams()
-  const roleId = Number(jobId)
+  // Keyed by the id, so a different job starts with a fresh page state.
+  return <JobDetailContent key={jobId} roleId={Number(jobId)} />
+}
 
+function JobDetailContent({ roleId }: { roleId: number }) {
   const [job, setJob] = useState<RoleDetail | null>(null)
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [loading, setLoading] = useState(true)
@@ -18,9 +21,6 @@ export function JobDetailPage() {
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    setNotFound(false)
-    setError("")
 
     // The API filters the candidates, so only this job's candidates are sent to the page.
     Promise.all([getRole(roleId), listCandidates({ roleId })])

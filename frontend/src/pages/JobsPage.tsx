@@ -1,5 +1,5 @@
 import { ArrowUpRight, Plus } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { useEffect, useState } from "react"
 import { Link } from "react-router"
 import { listRoles } from "../api/client"
 import type { Role } from "../api/types"
@@ -9,22 +9,31 @@ export function JobsPage() {
   const [jobs, setJobs] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState("")
-
-  const loadJobs = useCallback(async () => {
-    setLoading(true)
-    setLoadError("")
-    try {
-      setJobs(await listRoles())
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Could not load jobs.")
-    } finally {
-      setLoading(false)
-    }
-  }, [])
+  const [reloadKey, setReloadKey] = useState(0)
 
   useEffect(() => {
-    void loadJobs()
-  }, [loadJobs])
+    let current = true
+    listRoles()
+      .then((rows) => {
+        if (current) setJobs(rows)
+      })
+      .catch((error: unknown) => {
+        if (current) setLoadError(error instanceof Error ? error.message : "Could not load jobs.")
+      })
+      .finally(() => {
+        if (current) setLoading(false)
+      })
+    return () => {
+      current = false
+    }
+  }, [reloadKey])
+
+  // Try again shows loading first, so the effect itself never sets state.
+  function retryLoad() {
+    setLoading(true)
+    setLoadError("")
+    setReloadKey((key) => key + 1)
+  }
 
   return (
     <AppShell breadcrumbs={[{ label: "Workspace" }, { label: "Jobs" }]}>
@@ -48,7 +57,7 @@ export function JobsPage() {
           className="mt-6 flex items-center justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
         >
           <span>{loadError}</span>
-          <button type="button" onClick={() => void loadJobs()} className="font-medium underline">
+          <button type="button" onClick={retryLoad} className="font-medium underline">
             Try again
           </button>
         </div>

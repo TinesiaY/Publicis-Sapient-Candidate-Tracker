@@ -57,9 +57,8 @@ export function CandidatesPage() {
   // The last search value this page wrote to the URL. It tells our own writes apart from Back and Forward.
   const lastWrittenSearch = useRef(appliedSearch)
 
-  const [candidates, setCandidates] = useState<Candidate[]>([])
-  const [listLoading, setListLoading] = useState(true)
-  const [listError, setListError] = useState("")
+  // The last list result, with the query it answers. Until a result for the current query arrives, the list is loading.
+  const [listResult, setListResult] = useState<{ key: string; rows: Candidate[]; error: string } | null>(null)
   const [counts, setCounts] = useState<CandidateCounts | null>(null)
   const [roles, setRoles] = useState<Role[]>([])
   const [reloadKey, setReloadKey] = useState(0)
@@ -85,28 +84,29 @@ export function CandidatesPage() {
     return () => window.clearTimeout(timer)
   }, [searchInput, appliedSearch, setSearchParams])
 
-  // Fetch the list whenever a filter in the URL changes. A cancelled flag stops an old response from winning.
+  // Identifies the current query. A filter change or Try again changes it, so the list is loading until its result arrives.
+  const listKey = `${stage}|${roleId ?? ""}|${appliedSearch}|${sort}|${reloadKey}`
+
+  // Fetch the list whenever the query changes. A cancelled flag stops an old response from winning.
   useEffect(() => {
     let current = true
-    setListLoading(true)
-    setListError("")
     listCandidates({ stage: stage || undefined, roleId, search: appliedSearch, sort })
       .then((rows) => {
-        if (current) setCandidates(rows)
+        if (current) setListResult({ key: listKey, rows, error: "" })
       })
       .catch((error: unknown) => {
         if (current) {
-          setCandidates([])
-          setListError(messageOf(error, "Could not load candidates."))
+          setListResult({ key: listKey, rows: [], error: messageOf(error, "Could not load candidates.") })
         }
-      })
-      .finally(() => {
-        if (current) setListLoading(false)
       })
     return () => {
       current = false
     }
-  }, [stage, roleId, appliedSearch, sort, reloadKey])
+  }, [listKey, stage, roleId, appliedSearch, sort])
+
+  const listLoading = listResult?.key !== listKey
+  const candidates = listResult?.rows ?? []
+  const listError = listLoading ? "" : (listResult?.error ?? "")
 
   // The counts cover the whole pipeline, so they do not change with the filters.
   useEffect(() => {

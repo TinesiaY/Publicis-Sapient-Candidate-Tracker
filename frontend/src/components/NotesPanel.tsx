@@ -27,8 +27,6 @@ export function NotesPanel({ candidateId }: { candidateId: number }) {
 
   useEffect(() => {
     let current = true
-    setLoading(true)
-    setLoadError("")
     listNotes(candidateId)
       .then((rows) => {
         if (current) setNotes(rows)
@@ -43,6 +41,13 @@ export function NotesPanel({ candidateId }: { candidateId: number }) {
       current = false
     }
   }, [candidateId, reloadKey])
+
+  // Try again shows loading first, so the effect itself never sets state.
+  function retryLoad() {
+    setLoading(true)
+    setLoadError("")
+    setReloadKey((key) => key + 1)
+  }
 
   const length = trimNote(body).length
   const problem = validateNote(body)
@@ -130,7 +135,7 @@ export function NotesPanel({ candidateId }: { candidateId: number }) {
             className="flex items-center justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
           >
             <span>{loadError}</span>
-            <button type="button" onClick={() => setReloadKey((key) => key + 1)} className="font-medium underline">
+            <button type="button" onClick={retryLoad} className="font-medium underline">
               Try again
             </button>
           </div>

@@ -2,7 +2,7 @@ import { Upload, X } from "lucide-react"
 import type { DragEvent } from "react"
 import { useState } from "react"
 import { validateResumeFile, type ResumeInputValue } from "../lib/validateCandidate"
-import { inputClass } from "./FormControls"
+import { inputClass } from "../lib/formStyles"
 
 function formatSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`

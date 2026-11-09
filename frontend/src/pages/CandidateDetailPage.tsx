@@ -19,8 +19,11 @@ const CANDIDATES_CRUMB = { label: "Candidates", to: "/candidates" }
 
 export function CandidateDetailPage() {
   const { candidateId } = useParams()
-  const id = Number(candidateId)
+  // Keyed by the id, so a different candidate starts with a fresh page state.
+  return <CandidateDetailContent key={candidateId} candidateId={Number(candidateId)} />
+}
 
+function CandidateDetailContent({ candidateId: id }: { candidateId: number }) {
   const [candidate, setCandidate] = useState<CandidateDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFound, setNotFound] = useState(false)
@@ -37,13 +40,6 @@ export function CandidateDetailPage() {
 
   useEffect(() => {
     let current = true
-    setLoading(true)
-    setNotFound(false)
-    setLoadError("")
-    setStageError("")
-    setArchiveError("")
-    setConfirmingArchive(false)
-    setReplacingResume(false)
 
     getCandidate(id)
       .then((value) => {
@@ -65,6 +61,14 @@ export function CandidateDetailPage() {
       current = false
     }
   }, [id, reloadKey])
+
+  // Try again shows loading first, so the effect itself never sets state.
+  function retryLoad() {
+    setLoading(true)
+    setNotFound(false)
+    setLoadError("")
+    setReloadKey((key) => key + 1)
+  }
 
   const busy = stageSaving || archiveBusy
 
@@ -129,7 +133,7 @@ export function CandidateDetailPage() {
             className="flex items-center justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
           >
             <span>{loadError}</span>
-            <button type="button" onClick={() => setReloadKey((key) => key + 1)} className="font-medium underline">
+            <button type="button" onClick={retryLoad} className="font-medium underline">
               Try again
             </button>
           </div>
@@ -312,7 +316,7 @@ export function CandidateDetailPage() {
             <h2 className="text-lg font-semibold">Resume summary</h2>
             <p className="mt-2 text-sm text-muted">AI summaries arrive in a later milestone.</p>
           </section>
-          <NotesPanel candidateId={candidate.id} />
+          <NotesPanel key={candidate.id} candidateId={candidate.id} />
         </div>
       </div>
     </AppShell>
