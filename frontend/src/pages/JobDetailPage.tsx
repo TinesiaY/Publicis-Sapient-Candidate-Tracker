@@ -22,11 +22,12 @@ export function JobDetailPage() {
     setNotFound(false)
     setError("")
 
-    Promise.all([getRole(roleId), listCandidates()])
-      .then(([role, allCandidates]) => {
+    // The API filters the candidates, so only this job's candidates are sent to the page.
+    Promise.all([getRole(roleId), listCandidates({ roleId })])
+      .then(([role, jobCandidates]) => {
         if (cancelled) return
         setJob(role)
-        setCandidates(allCandidates.filter((candidate) => candidate.role_id === roleId))
+        setCandidates(jobCandidates)
       })
       .catch((err: unknown) => {
         if (cancelled) return
