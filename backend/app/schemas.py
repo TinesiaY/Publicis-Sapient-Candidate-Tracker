@@ -101,3 +101,10 @@ class CandidateDetail(CandidateSummary):
     """GET /candidates/{id} and the POST response. Adds the resume text."""
 
     resume_text: str
+
+
+class CandidateCounts(BaseModel):
+    """GET /candidates/counts. Every stage appears, even when its count is 0."""
+
+    total: int
+    by_stage: dict[str, int]

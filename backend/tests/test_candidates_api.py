@@ -120,8 +120,9 @@ def test_list_returns_created_candidates_without_resume_text(client, role_ids):
 
     assert response.status_code == 200
     rows = response.json()
-    assert [row["role_id"] for row in rows] == [role_ids["backend"], role_ids["frontend"]]
-    assert [row["role_name"] for row in rows] == ["Backend Engineer", "Frontend Engineer"]
+    # The default order is newest first, so the frontend candidate (added second) comes first.
+    assert [row["role_id"] for row in rows] == [role_ids["frontend"], role_ids["backend"]]
+    assert [row["role_name"] for row in rows] == ["Frontend Engineer", "Backend Engineer"]
     assert "resume_text" not in rows[0]
 
 

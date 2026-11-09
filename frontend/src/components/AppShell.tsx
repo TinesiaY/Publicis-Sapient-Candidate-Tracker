@@ -21,16 +21,6 @@ export function AppShell({ children, breadcrumbs, candidateCount }: AppShellProp
             </div>
             <span className="text-lg font-medium">Candidate Tracker</span>
           </Link>
-          <span className="text-muted" aria-hidden="true">
-            /
-          </span>
-          <span className="text-sm text-muted">Acme workspace</span>
-        </div>
-        <div className="flex items-center gap-3 text-sm text-muted">
-          <span>Hiring workspace</span>
-          <span className="flex size-8 items-center justify-center rounded-full bg-stone-200 text-xs font-medium text-ink">
-            AC
-          </span>
         </div>
       </header>
 

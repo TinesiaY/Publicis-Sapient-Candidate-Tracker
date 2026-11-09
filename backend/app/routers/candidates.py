@@ -1,15 +1,16 @@
-"""Candidate endpoints: create, list and view candidates."""
+"""Candidate endpoints: create, list, count and view candidates."""
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Form, HTTPException
+from fastapi import APIRouter, Depends, Form, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.deps import get_session
-from app.models import Candidate, Role
-from app.schemas import CandidateCreate, CandidateDetail, CandidateSummary
+from app.models import Candidate, Role, Stage
+from app.queries import SortOrder, candidate_list_query, stage_counts
+from app.schemas import CandidateCounts, CandidateCreate, CandidateDetail, CandidateSummary
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -60,9 +61,20 @@ def create_candidate(
 
 
 @router.get("", response_model=list[CandidateSummary])
-def list_candidates(session: Session = Depends(get_session)) -> list[Candidate]:
-    return list(session.scalars(select(Candidate).order_by(Candidate.id)))
+def list_candidates(
+    stage: Stage | None = None,
+    role_id: int | None = None,
+    search: Annotated[str | None, Query(max_length=200)] = None,
+    sort: SortOrder = "added",
+    session: Session = Depends(get_session),
+) -> list[Candidate]:
+    query = candidate_list_query(stage=stage, role_id=role_id, search=search, sort=sort)
+    return list(session.scalars(query))
 
+@router.get("/counts", response_model=CandidateCounts)
+def get_candidate_counts(session: Session = Depends(get_session)) -> CandidateCounts:
+    by_stage = stage_counts(session)
+    return CandidateCounts(total=sum(by_stage.values()), by_stage=by_stage)
 
 @router.get("/{candidate_id}", response_model=CandidateDetail)
 def get_candidate(candidate_id: int, session: Session = Depends(get_session)) -> Candidate:

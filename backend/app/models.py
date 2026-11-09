@@ -1,6 +1,7 @@
 """ORM models and database constraints for the candidate tracker."""
 
 from datetime import datetime, timezone
+from enum import StrEnum
 
 from sqlalchemy import DDL, CheckConstraint, ForeignKey, Index, String, Text, UniqueConstraint, event, text
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -8,7 +9,16 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base, UTCDateTime
 from app.text_rules import not_blank_sql
 
-STAGES = ("Applied", "Screening", "Interview", "Offer", "Rejected")
+class Stage(StrEnum):
+    """Pipeline stages. The values are the exact strings stored in the database."""
+
+    APPLIED = "Applied"
+    SCREENING = "Screening"
+    INTERVIEW = "Interview"
+    OFFER = "Offer"
+    REJECTED = "Rejected"
+
+STAGES = tuple(stage.value for stage in Stage)
 JOB_STATUSES = ("pending", "ready", "failed", "superseded")
 
 
