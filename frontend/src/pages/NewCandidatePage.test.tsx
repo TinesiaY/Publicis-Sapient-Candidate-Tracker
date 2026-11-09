@@ -91,4 +91,33 @@ describe("NewCandidatePage", () => {
     expect(screen.getByText("Write the job description.")).toBeTruthy()
     expect(createRole).not.toHaveBeenCalled()
   })
+
+  it("sends an uploaded file as resume_file and clears the pasted text", async () => {
+    vi.mocked(createCandidate).mockResolvedValue({} as Candidate)
+    renderPage()
+    await screen.findByRole("option", { name: "Backend Engineer" })
+
+    fillCandidate("1")
+    const file = new File(["Python developer, 3 years"], "ann-tan.txt", { type: "text/plain" })
+    fireEvent.change(screen.getByLabelText("Choose a file to upload"), { target: { files: [file] } })
+    expect((screen.getByLabelText(/resume/i) as HTMLTextAreaElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole("button", { name: "+ Add candidate" }))
+
+    await waitFor(() => expect(createCandidate).toHaveBeenCalled())
+    const sent = vi.mocked(createCandidate).mock.calls[0][0]
+    expect((sent.get("resume_file") as File).name).toBe("ann-tan.txt")
+    expect(sent.get("resume_text")).toBeNull()
+  })
+
+  it("rejects a file that is not .txt or .md", async () => {
+    renderPage()
+    await screen.findByRole("option", { name: "Backend Engineer" })
+
+    fireEvent.change(screen.getByLabelText("Choose a file to upload"), {
+      target: { files: [new File(["%PDF"], "resume.pdf", { type: "application/pdf" })] },
+    })
+
+    expect(await screen.findByText("Upload a .txt or .md file.")).toBeTruthy()
+    expect((screen.getByLabelText(/resume/i) as HTMLTextAreaElement).disabled).toBe(false)
+  })
 })

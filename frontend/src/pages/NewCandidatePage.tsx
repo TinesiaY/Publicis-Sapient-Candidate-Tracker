@@ -1,12 +1,12 @@
-import { Upload } from "lucide-react"
 import type { FormEvent } from "react"
 import { useEffect, useState } from "react"
 import { Link, useNavigate } from "react-router"
-import { ApiError, createCandidate, createRole, listRoles } from "../api/client"
+import { ApiError, appendResume, createCandidate, createRole, listRoles } from "../api/client"
 import type { Role } from "../api/types"
 import { SOURCES, STAGES } from "../api/types"
 import { AppShell } from "../components/AppShell"
 import { Field, SelectInput, TextArea, TextInput } from "../components/FormControls"
+import { ResumeInput } from "../components/ResumeInput"
 import { validateCandidateForm, type CandidateFormErrors, type CandidateFormValues } from "../lib/validateCandidate"
 import { validateRoleForm, type RoleFormErrors, type RoleFormValues } from "../lib/validateRole"
 
@@ -20,6 +20,7 @@ const EMPTY_VALUES: CandidateFormValues = {
   roleId: "",
   source: "",
   resumeText: "",
+  resumeFile: null,
 }
 
 const EMPTY_NEW_ROLE: RoleFormValues = { name: "", jdText: "" }
@@ -36,7 +37,7 @@ function toFormData(values: CandidateFormValues): FormData {
   data.append("role_id", values.roleId)
   data.append("phone", values.phone)
   data.append("source", values.source)
-  data.append("resume_text", values.resumeText)
+  appendResume(data, { text: values.resumeText, file: values.resumeFile ?? null })
   return data
 }
 
@@ -252,31 +253,16 @@ export function NewCandidatePage() {
           <hr className="border-line" />
 
           <section>
-            <Field
-              id="resumeText"
-              label="Resume / cover letter"
-              required
-              error={errors.resumeText}
-              hint="Paste text. File upload is coming in a later milestone."
-            >
-              <TextArea
+            {/* The error is shown by ResumeInput, not Field, so the message appears once. */}
+            <Field id="resumeText" label="Resume / cover letter" required hint="Paste the text, or upload one .txt or .md file up to 500 KB. Use one or the other.">
+              <ResumeInput
                 id="resumeText"
-                rows={10}
-                value={values.resumeText}
-                onChange={(value) => update("resumeText", value)}
+                value={{ text: values.resumeText, file: values.resumeFile ?? null }}
+                onChange={(resume) => setValues((current) => ({ ...current, resumeText: resume.text, resumeFile: resume.file }))}
                 error={errors.resumeText}
+                disabled={submitting}
               />
             </Field>
-
-            <div
-              aria-disabled="true"
-              className="mt-4 flex items-center gap-3 rounded-lg border border-dashed border-line px-5 py-5 text-sm text-muted"
-            >
-              <Upload className="size-5" aria-hidden="true" />
-              <span>
-                File upload <span className="text-muted/70">(PDF, DOCX or TXT, up to 10 MB) arrives in a later milestone.</span>
-              </span>
-            </div>
           </section>
         </div>
 

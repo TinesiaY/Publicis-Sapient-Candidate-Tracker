@@ -7,6 +7,7 @@ import { STAGES } from "../api/types"
 import { AppShell } from "../components/AppShell"
 import { Avatar } from "../components/Avatar"
 import { NotesPanel } from "../components/NotesPanel"
+import { ReplaceResumePanel } from "../components/ReplaceResumePanel"
 import { StageBadge } from "../components/StageBadge"
 import { formatDate } from "../lib/format"
 
@@ -32,6 +33,7 @@ export function CandidateDetailPage() {
   const [confirmingArchive, setConfirmingArchive] = useState(false)
   const [archiveBusy, setArchiveBusy] = useState(false)
   const [archiveError, setArchiveError] = useState("")
+  const [replacingResume, setReplacingResume] = useState(false)
 
   useEffect(() => {
     let current = true
@@ -41,6 +43,7 @@ export function CandidateDetailPage() {
     setStageError("")
     setArchiveError("")
     setConfirmingArchive(false)
+    setReplacingResume(false)
 
     getCandidate(id)
       .then((value) => {
@@ -86,6 +89,7 @@ export function CandidateDetailPage() {
     try {
       setCandidate(await archiveCandidate(candidate.id))
       setConfirmingArchive(false)
+      setReplacingResume(false)
     } catch (error) {
       setArchiveError(messageOf(error, "Could not archive this candidate. Try again."))
     } finally {
@@ -274,7 +278,32 @@ export function CandidateDetailPage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
         <section className="rounded-xl border border-line bg-white p-6">
-          <h2 className="text-lg font-semibold">Resume &amp; application</h2>
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold">Resume &amp; application</h2>
+            {!replacingResume && (
+              <button
+                type="button"
+                onClick={() => setReplacingResume(true)}
+                disabled={busy || isArchived}
+                className="rounded-lg border border-line bg-white px-3 py-2 text-sm font-medium hover:bg-stone-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                Replace resume
+              </button>
+            )}
+          </div>
+          {isArchived && <p className="mt-2 text-sm text-muted">Restore this candidate to replace their resume.</p>}
+
+          {replacingResume && (
+            <ReplaceResumePanel
+              candidateId={candidate.id}
+              onSaved={(updated) => {
+                setCandidate(updated)
+                setReplacingResume(false)
+              }}
+              onCancel={() => setReplacingResume(false)}
+            />
+          )}
+
           <p className="mt-4 whitespace-pre-wrap leading-relaxed">{candidate.resume_text}</p>
         </section>
 

@@ -1,7 +1,15 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router"
-import { ApiError, archiveCandidate, getCandidate, listNotes, restoreCandidate, updateCandidateStage } from "../api/client"
+import {
+  ApiError,
+  archiveCandidate,
+  getCandidate,
+  listNotes,
+  replaceCandidateResume,
+  restoreCandidate,
+  updateCandidateStage,
+} from "../api/client"
 import type { CandidateDetail } from "../api/types"
 import { CandidateDetailPage } from "./CandidateDetailPage"
 
@@ -13,6 +21,7 @@ vi.mock("../api/client", async (importOriginal) => {
     updateCandidateStage: vi.fn(),
     archiveCandidate: vi.fn(),
     restoreCandidate: vi.fn(),
+    replaceCandidateResume: vi.fn(),
     listNotes: vi.fn(),
   }
 })
@@ -158,5 +167,51 @@ describe("CandidateDetailPage", () => {
     renderAt("/candidates/999")
 
     expect(await screen.findByText("This candidate does not exist.")).toBeTruthy()
+  })
+
+  it("shows the new resume only after the server confirms the replacement", async () => {
+    const pending = deferred<CandidateDetail>()
+    vi.mocked(replaceCandidateResume).mockReturnValue(pending.promise)
+    renderAt()
+    await screen.findByRole("heading", { name: "Ben Lee" })
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace resume" }))
+    fireEvent.change(screen.getByLabelText(/new resume/i), { target: { value: "Senior front-end developer, 5 years." } })
+    fireEvent.click(screen.getByRole("button", { name: "Save resume" }))
+
+    expect(replaceCandidateResume).toHaveBeenCalledWith(7, { text: "Senior front-end developer, 5 years.", file: null })
+    // Nothing has changed on the page yet.
+    expect(screen.getByText("Front-end developer, 1 year.")).toBeTruthy()
+    expect((screen.getByRole("button", { name: "Saving..." }) as HTMLButtonElement).disabled).toBe(true)
+
+    pending.resolve({ ...ACTIVE, resume_text: "Senior front-end developer, 5 years." })
+
+    expect(await screen.findByText("Senior front-end developer, 5 years.")).toBeTruthy()
+    expect(screen.queryByRole("button", { name: "Save resume" })).toBeNull()
+  })
+
+  it("keeps the old resume and the typed text when the replacement fails", async () => {
+    vi.mocked(replaceCandidateResume).mockRejectedValue(
+      new ApiError("Restore this candidate before replacing their resume", 409),
+    )
+    renderAt()
+    await screen.findByRole("heading", { name: "Ben Lee" })
+
+    fireEvent.click(screen.getByRole("button", { name: "Replace resume" }))
+    fireEvent.change(screen.getByLabelText(/new resume/i), { target: { value: "Senior front-end developer." } })
+    fireEvent.click(screen.getByRole("button", { name: "Save resume" }))
+
+    expect((await screen.findByRole("alert")).textContent).toContain("Restore this candidate before replacing their resume")
+    expect(screen.getByText("Front-end developer, 1 year.")).toBeTruthy()
+    expect((screen.getByLabelText(/new resume/i) as HTMLTextAreaElement).value).toBe("Senior front-end developer.")
+  })
+
+  it("does not allow replacing the resume of an archived candidate", async () => {
+    vi.mocked(getCandidate).mockResolvedValue(ARCHIVED)
+    renderAt()
+    await screen.findByRole("heading", { name: "Ben Lee" })
+
+    expect((screen.getByRole("button", { name: "Replace resume" }) as HTMLButtonElement).disabled).toBe(true)
+    expect(screen.getByText("Restore this candidate to replace their resume.")).toBeTruthy()
   })
 })

@@ -8,6 +8,8 @@ export interface CandidateFormValues {
   roleId: string
   source: string
   resumeText: string
+  // An uploaded file is used instead of the pasted text. Only one of the two is sent.
+  resumeFile?: File | null
 }
 
 export type CandidateFormErrors = Partial<Record<keyof CandidateFormValues, string>>
@@ -17,8 +19,52 @@ const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 const BLANK_PATTERN = /^[ \t\r\n\f\v]*$/
 const NUL = "\u0000"
 
+// Resume limits. They match backend/app/resume_input.py.
+export const MAX_RESUME_BYTES = 500 * 1024
+export const RESUME_EXTENSIONS = [".txt", ".md"] as const
+
 export function isBlank(value: string): boolean {
   return BLANK_PATTERN.test(value)
+}
+
+export function validateResumeFile(file: File): string | null {
+  const name = file.name.toLowerCase()
+  if (!RESUME_EXTENSIONS.some((extension) => name.endsWith(extension))) {
+    return "Upload a .txt or .md file."
+  }
+  if (file.size > MAX_RESUME_BYTES) {
+    return "The file must be 500 KB or smaller."
+  }
+  return null
+}
+
+export function validateResumeText(text: string): string | null {
+  if (isBlank(text)) {
+    return "Paste the resume or cover letter text."
+  }
+  if (text.includes(NUL)) {
+    return "Resume contains characters that cannot be saved."
+  }
+  if (new TextEncoder().encode(text).length > MAX_RESUME_BYTES) {
+    return "The pasted resume must be 500 KB or smaller."
+  }
+  return null
+}
+
+export interface ResumeInputValue {
+  text: string
+  file: File | null
+}
+
+// Exactly one of pasted text or a file must be given.
+export function validateResumeInput(value: ResumeInputValue): string | null {
+  if (value.file) {
+    if (!isBlank(value.text)) {
+      return "Paste the resume or upload a file, not both."
+    }
+    return validateResumeFile(value.file)
+  }
+  return validateResumeText(value.text)
 }
 
 export function validateCandidateForm(values: CandidateFormValues): CandidateFormErrors {
@@ -50,10 +96,9 @@ export function validateCandidateForm(values: CandidateFormValues): CandidateFor
     errors.source = "Source must be 100 characters or fewer."
   }
 
-  if (isBlank(values.resumeText)) {
-    errors.resumeText = "Paste the resume or cover letter text."
-  } else if (values.resumeText.includes(NUL)) {
-    errors.resumeText = "Resume contains characters that cannot be saved."
+  const resumeError = validateResumeInput({ text: values.resumeText, file: values.resumeFile ?? null })
+  if (resumeError) {
+    errors.resumeText = resumeError
   }
 
   return errors

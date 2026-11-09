@@ -9,6 +9,7 @@ import type {
   RoleDetail,
   StageName,
 } from "./types"
+import type { ResumeInputValue } from "../lib/validateCandidate"
 
 // The backend allows requests from http://localhost:5173 (see backend/app/main.py).
 const API_URL = "http://127.0.0.1:8000"
@@ -109,6 +110,22 @@ export function archiveCandidate(candidateId: number): Promise<CandidateDetail> 
 
 export function restoreCandidate(candidateId: number): Promise<CandidateDetail> {
   return request<CandidateDetail>(`/candidates/${candidateId}/restore`, { method: "POST" })
+}
+
+// The resume is sent as either pasted text or one file, never both.
+export function appendResume(data: FormData, resume: ResumeInputValue): void {
+  if (resume.file) {
+    data.append("resume_file", resume.file)
+  } else {
+    data.append("resume_text", resume.text)
+  }
+}
+
+// Replaces the resume. The summary is regenerated for the new text, and notes and stage are unchanged.
+export function replaceCandidateResume(candidateId: number, resume: ResumeInputValue): Promise<CandidateDetail> {
+  const data = new FormData()
+  appendResume(data, resume)
+  return request<CandidateDetail>(`/candidates/${candidateId}/resume`, { method: "PUT", body: data })
 }
 
 // Newest first, as the backend returns them.
