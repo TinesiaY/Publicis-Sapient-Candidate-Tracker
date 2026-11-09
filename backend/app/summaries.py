@@ -1,39 +1,49 @@
-"""Summary requests: record that a resume needs a summary. Milestone 9 processes these requests."""
+"""Summary requests: saving or replacing a resume records a summary request for its current text.
 
-from sqlalchemy import select
+A request is identified by three things: the resume's hash, the prompt version and the model.
+A result is reused only when all three match. Milestone 9 adds the worker that runs the requests.
+"""
+
+from sqlalchemy import and_, select, update
 from sqlalchemy.orm import Session
 
+from app.ai.prompts import PROMPT_VERSION
+from app.ai.provider import SUMMARY_MODEL
 from app.models import Candidate, SummaryJob
 from app.resume import resume_hash
 
-PROMPT_VERSION = "v1"
-# The real model is chosen in milestone 9. Until then, requests are recorded with this placeholder.
-SUMMARY_MODEL = "not-yet-configured"
-
 
 def request_summary(session: Session, candidate: Candidate) -> None:
-    """Ask for a summary of the candidate's current resume.
+    """Ask for a summary of the candidate's current resume. The caller commits.
 
-    Requests for earlier versions of the resume are marked superseded. If a pending or ready
-    result already exists for this exact text, nothing new is recorded.
+    Pending requests for anything other than this request are superseded. If a pending or ready
+    result already exists for this request, nothing new is recorded.
     """
     current_hash = resume_hash(candidate.resume_text)
+    same_request = and_(
+        SummaryJob.input_hash == current_hash,
+        SummaryJob.prompt_version == PROMPT_VERSION,
+        SummaryJob.model == SUMMARY_MODEL,
+    )
 
-    stale = session.scalars(
-        select(SummaryJob).where(
+    # The status condition is part of the write, so a job the worker has just finished
+    # is not overwritten with "superseded".
+    session.execute(
+        update(SummaryJob)
+        .where(
             SummaryJob.candidate_id == candidate.id,
             SummaryJob.status == "pending",
-            SummaryJob.input_hash != current_hash,
+            ~same_request,
         )
-    ).all()
-    for job in stale:
-        job.status = "superseded"
+        .values(status="superseded")
+        .execution_options(synchronize_session="fetch")
+    )
 
     existing = session.scalar(
         select(SummaryJob.id).where(
             SummaryJob.candidate_id == candidate.id,
-            SummaryJob.input_hash == current_hash,
             SummaryJob.status.in_(("pending", "ready")),
+            same_request,
         )
     )
     if existing is None:

@@ -15,6 +15,7 @@ from sqlalchemy.engine import Engine
 
 from app.db import DB_PATH, Base, make_engine, make_session_factory
 from app.models import Candidate, Role
+from app.summaries import request_summary
 
 # Placeholder data.
 ROLES = [
@@ -148,6 +149,10 @@ def seed_database(engine: Engine) -> None:
                 .values(**values)
                 .on_conflict_do_nothing(index_elements=["email", "role_id"])
             )
+
+        # Record a summary request for every candidate. The worker runs them later, so seeding never calls the AI.
+        for candidate in session.scalars(select(Candidate)).all():
+            request_summary(session, candidate)
 
         session.commit()
 
