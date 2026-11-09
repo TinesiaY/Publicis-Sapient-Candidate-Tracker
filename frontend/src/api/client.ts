@@ -1,4 +1,4 @@
-import type { Candidate, NewRoleInput, Role, RoleDetail } from "./types"
+import type { Candidate, CandidateCounts, CandidateFilters, NewRoleInput, Role, RoleDetail } from "./types"
 
 // The backend allows requests from http://localhost:5173 (see backend/app/main.py).
 const API_URL = "http://127.0.0.1:8000"
@@ -54,8 +54,32 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return (await response.json()) as T
 }
 
-export function listCandidates(): Promise<Candidate[]> {
-  return request<Candidate[]>("/candidates")
+// Builds the query string the backend reads. Empty values and the default sort are left out.
+export function buildCandidateQuery(filters: CandidateFilters): string {
+  const params = new URLSearchParams()
+  if (filters.stage) {
+    params.set("stage", filters.stage)
+  }
+  if (filters.roleId !== undefined) {
+    params.set("role_id", String(filters.roleId))
+  }
+  const search = filters.search?.trim()
+  if (search) {
+    params.set("search", search)
+  }
+  if (filters.sort && filters.sort !== "added") {
+    params.set("sort", filters.sort)
+  }
+  const query = params.toString()
+  return query ? `?${query}` : ""
+}
+
+export function listCandidates(filters: CandidateFilters = {}): Promise<Candidate[]> {
+  return request<Candidate[]>(`/candidates${buildCandidateQuery(filters)}`)
+}
+
+export function getCandidateCounts(): Promise<CandidateCounts> {
+  return request<CandidateCounts>("/candidates/counts")
 }
 
 // Send FormData without a Content-Type header. The browser adds the multipart boundary.

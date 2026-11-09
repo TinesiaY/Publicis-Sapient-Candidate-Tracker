@@ -32,3 +32,17 @@ export interface Candidate {
   created_at: string
   archived_at: string | null
 }
+
+export interface CandidateCounts {
+  total: number
+  by_stage: Record<string, number>
+}
+
+export type SortOrder = "added" | "stage"
+
+export interface CandidateFilters {
+  stage?: string
+  roleId?: number
+  search?: string
+  sort?: SortOrder
+}

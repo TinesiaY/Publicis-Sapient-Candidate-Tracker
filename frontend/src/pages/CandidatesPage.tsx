@@ -1,15 +1,18 @@
 import { Ban, ChevronDown, CircleCheck, Inbox, MessagesSquare, Plus, ScanSearch, Search, ArrowDown, ArrowUpRight } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
-import { useCallback, useEffect, useMemo, useState } from "react"
-import { Link } from "react-router"
-import { listCandidates } from "../api/client"
-import type { Candidate } from "../api/types"
+import { useEffect, useRef, useState } from "react"
+import { Link, useSearchParams } from "react-router"
+import { getCandidateCounts, listCandidates, listRoles } from "../api/client"
+import type { Candidate, CandidateCounts, Role, SortOrder } from "../api/types"
 import { STAGES } from "../api/types"
 import { AppShell } from "../components/AppShell"
 import { Avatar } from "../components/Avatar"
 import { StageBadge } from "../components/StageBadge"
 import { formatDate } from "../lib/format"
+
+// How long the search box waits after the last keystroke before it searches.
+const SEARCH_DEBOUNCE_MS = 300
 
 const STAGE_ICONS: Record<string, LucideIcon> = {
   Applied: Inbox,
@@ -19,76 +22,149 @@ const STAGE_ICONS: Record<string, LucideIcon> = {
   Rejected: Ban,
 }
 
-type SortKey = "added" | "stage"
-
-function stageRank(stage: string): number {
-  return (STAGES as readonly string[]).indexOf(stage)
+// Changes filter values in the URL. A null or empty value removes that parameter.
+function withParams(previous: URLSearchParams, changes: Record<string, string | null>): URLSearchParams {
+  const next = new URLSearchParams(previous)
+  for (const [key, value] of Object.entries(changes)) {
+    if (value === null || value === "") {
+      next.delete(key)
+    } else {
+      next.set(key, value)
+    }
+  }
+  return next
 }
 
-function newestFirst(a: Candidate, b: Candidate): number {
-  return Date.parse(b.created_at) - Date.parse(a.created_at)
+function messageOf(error: unknown, fallback: string): string {
+  return error instanceof Error ? error.message : fallback
 }
 
 export function CandidatesPage() {
-  const [candidates, setCandidates] = useState<Candidate[]>([])
-  const [loading, setLoading] = useState(true)
-  const [loadError, setLoadError] = useState("")
-  const [search, setSearch] = useState("")
-  const [stageFilter, setStageFilter] = useState("")
-  const [roleFilter, setRoleFilter] = useState("")
-  const [sortKey, setSortKey] = useState<SortKey>("added")
+  const [searchParams, setSearchParams] = useSearchParams()
 
-  const loadCandidates = useCallback(async () => {
-    setLoading(true)
-    setLoadError("")
-    try {
-      setCandidates(await listCandidates())
-    } catch (error) {
-      setLoadError(error instanceof Error ? error.message : "Could not load candidates.")
-    } finally {
-      setLoading(false)
+  // The URL is the source of truth for the filters, so a refresh keeps them.
+  // Values that the backend would reject are ignored here.
+  const stageParam = searchParams.get("stage") ?? ""
+  const stage = (STAGES as readonly string[]).includes(stageParam) ? stageParam : ""
+  const roleParam = searchParams.get("role") ?? ""
+  const roleId = roleParam !== "" && Number.isInteger(Number(roleParam)) ? Number(roleParam) : undefined
+  const sort: SortOrder = searchParams.get("sort") === "stage" ? "stage" : "added"
+  const appliedSearch = searchParams.get("q") ?? ""
+
+  // What the user is typing. It reaches the URL only after the debounce delay.
+  const [searchInput, setSearchInput] = useState(appliedSearch)
+  // The last search value this page wrote to the URL. It tells our own writes apart from Back and Forward.
+  const lastWrittenSearch = useRef(appliedSearch)
+
+  const [candidates, setCandidates] = useState<Candidate[]>([])
+  const [listLoading, setListLoading] = useState(true)
+  const [listError, setListError] = useState("")
+  const [counts, setCounts] = useState<CandidateCounts | null>(null)
+  const [roles, setRoles] = useState<Role[]>([])
+  const [reloadKey, setReloadKey] = useState(0)
+
+  // A URL change that we did not make (Back, Forward) updates the search box.
+  useEffect(() => {
+    if (appliedSearch !== lastWrittenSearch.current) {
+      lastWrittenSearch.current = appliedSearch
+      setSearchInput(appliedSearch)
+    }
+  }, [appliedSearch])
+
+  // Search once the user has stopped typing. Each new keystroke cancels the previous timer.
+  useEffect(() => {
+    const term = searchInput.trim()
+    if (term === appliedSearch) {
+      return
+    }
+    const timer = window.setTimeout(() => {
+      lastWrittenSearch.current = term
+      setSearchParams((previous) => withParams(previous, { q: term }), { replace: true })
+    }, SEARCH_DEBOUNCE_MS)
+    return () => window.clearTimeout(timer)
+  }, [searchInput, appliedSearch, setSearchParams])
+
+  // Fetch the list whenever a filter in the URL changes. A cancelled flag stops an old response from winning.
+  useEffect(() => {
+    let current = true
+    setListLoading(true)
+    setListError("")
+    listCandidates({ stage: stage || undefined, roleId, search: appliedSearch, sort })
+      .then((rows) => {
+        if (current) setCandidates(rows)
+      })
+      .catch((error: unknown) => {
+        if (current) {
+          setCandidates([])
+          setListError(messageOf(error, "Could not load candidates."))
+        }
+      })
+      .finally(() => {
+        if (current) setListLoading(false)
+      })
+    return () => {
+      current = false
+    }
+  }, [stage, roleId, appliedSearch, sort, reloadKey])
+
+  // The counts cover the whole pipeline, so they do not change with the filters.
+  useEffect(() => {
+    let current = true
+    getCandidateCounts()
+      .then((value) => {
+        if (current) setCounts(value)
+      })
+      .catch(() => {
+        if (current) setCounts(null)
+      })
+    return () => {
+      current = false
+    }
+  }, [reloadKey])
+
+  useEffect(() => {
+    let current = true
+    listRoles()
+      .then((value) => {
+        if (current) setRoles(value)
+      })
+      .catch(() => undefined)
+    return () => {
+      current = false
     }
   }, [])
 
-  useEffect(() => {
-    void loadCandidates()
-  }, [loadCandidates])
+  function changeStage(value: string) {
+    setSearchParams((previous) => withParams(previous, { stage: value }), { replace: true })
+  }
 
-  const roleNames = useMemo(
-    () => [...new Set(candidates.map((candidate) => candidate.role_name))].sort(),
-    [candidates],
-  )
+  function changeRole(value: string) {
+    setSearchParams((previous) => withParams(previous, { role: value }), { replace: true })
+  }
 
-  const stageCounts = useMemo(
-    () => STAGES.map((stage) => ({ stage, count: candidates.filter((c) => c.stage === stage).length })),
-    [candidates],
-  )
+  function changeSort(value: SortOrder) {
+    setSearchParams((previous) => withParams(previous, { sort: value === "added" ? null : "stage" }), {
+      replace: true,
+    })
+  }
 
-  // Filtering and sorting run in the browser for now. Milestone 4 moves them to the backend.
-  const visible = useMemo(() => {
-    const query = search.trim().toLowerCase()
-    const matches = candidates.filter(
-      (candidate) =>
-        (query === "" ||
-          candidate.name.toLowerCase().includes(query) ||
-          candidate.email.toLowerCase().includes(query)) &&
-        (stageFilter === "" || candidate.stage === stageFilter) &&
-        (roleFilter === "" || candidate.role_name === roleFilter),
+  function clearFilters() {
+    lastWrittenSearch.current = ""
+    setSearchInput("")
+    setSearchParams(
+      (previous) => withParams(previous, { stage: null, role: null, q: null, sort: null }),
+      { replace: true },
     )
-    if (sortKey === "stage") {
-      return [...matches].sort((a, b) => stageRank(a.stage) - stageRank(b.stage) || newestFirst(a, b))
-    }
-    return [...matches].sort(newestFirst)
-  }, [candidates, search, stageFilter, roleFilter, sortKey])
+  }
 
+  const hasFilters = stage !== "" || roleId !== undefined || appliedSearch !== "" || searchInput.trim() !== ""
+  const total = counts?.total ?? candidates.length
+  const selectedRole = roles.find((role) => role.id === roleId)
   const monthLabel = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" })
-  const hasFilters = search !== "" || stageFilter !== "" || roleFilter !== ""
+  const initialLoad = listLoading && candidates.length === 0
 
   return (
-    <AppShell
-      breadcrumbs={[{ label: "Workspace" }, { label: "Candidates" }]}
-      candidateCount={candidates.length}
-    >
+    <AppShell breadcrumbs={[{ label: "Workspace" }, { label: "Candidates" }]} candidateCount={counts?.total}>
       <div className="flex flex-wrap items-center justify-between gap-4">
         <h1 className="text-3xl font-semibold tracking-tight">Candidates</h1>
         <Link
@@ -101,12 +177,13 @@ export function CandidatesPage() {
       </div>
 
       <div className="mt-8 grid grid-cols-2 gap-4 lg:grid-cols-5">
-        {stageCounts.map(({ stage, count }) => {
-          const Icon = STAGE_ICONS[stage]
+        {STAGES.map((name) => {
+          const Icon = STAGE_ICONS[name]
+          const count = counts?.by_stage[name] ?? 0
           return (
-            <div key={stage} className="rounded-xl border border-line bg-white p-5">
+            <div key={name} className="rounded-xl border border-line bg-white p-5">
               <div className="flex items-center justify-between text-sm text-muted">
-                <span>{stage}</span>
+                <span>{name}</span>
                 <Icon className="size-4" aria-hidden="true" />
               </div>
               <div className="mt-6 flex items-end justify-between">
@@ -121,10 +198,10 @@ export function CandidatesPage() {
       <div className="mt-10 flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-3">
           <h2 className="text-xl font-semibold">All candidates</h2>
-          <span className="rounded-md bg-stone-100 px-2 py-0.5 text-sm text-muted">{candidates.length}</span>
+          <span className="rounded-md bg-stone-100 px-2 py-0.5 text-sm text-muted">{total}</span>
         </div>
         <span className="text-sm text-muted">
-          {roleFilter || "All roles"} · {monthLabel}
+          {selectedRole?.name ?? "All roles"} · {monthLabel}
         </span>
       </div>
 
@@ -135,26 +212,26 @@ export function CandidatesPage() {
             type="search"
             aria-label="Search name or email"
             placeholder="Search name or email..."
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
+            value={searchInput}
+            onChange={(event) => setSearchInput(event.target.value)}
             className="w-full rounded-lg border border-line bg-white py-2.5 pr-3.5 pl-10 text-sm shadow-xs focus:border-brand focus:ring-2 focus:ring-brand/20 focus:outline-none"
           />
         </div>
 
-        <SelectFilter label="Filter by stage" value={stageFilter} onChange={setStageFilter}>
+        <SelectFilter label="Filter by stage" value={stage} onChange={changeStage}>
           <option value="">All stages</option>
-          {STAGES.map((stage) => (
-            <option key={stage} value={stage}>
-              {stage}
+          {STAGES.map((name) => (
+            <option key={name} value={name}>
+              {name}
             </option>
           ))}
         </SelectFilter>
 
-        <SelectFilter label="Filter by role" value={roleFilter} onChange={setRoleFilter}>
+        <SelectFilter label="Filter by role" value={roleId === undefined ? "" : String(roleId)} onChange={changeRole}>
           <option value="">All roles</option>
-          {roleNames.map((name) => (
-            <option key={name} value={name}>
-              {name}
+          {roles.map((role) => (
+            <option key={role.id} value={String(role.id)}>
+              {role.name}
             </option>
           ))}
         </SelectFilter>
@@ -162,24 +239,24 @@ export function CandidatesPage() {
         <div className="ml-auto flex items-center gap-2 text-sm text-muted">
           <span>Sort by</span>
           <div role="group" aria-label="Sort by" className="flex rounded-lg bg-stone-100 p-1">
-            <SortButton active={sortKey === "added"} onClick={() => setSortKey("added")}>
+            <SortButton active={sort === "added"} onClick={() => changeSort("added")}>
               Date added
-              {sortKey === "added" && <ArrowDown className="size-3.5" aria-hidden="true" />}
+              {sort === "added" && <ArrowDown className="size-3.5" aria-hidden="true" />}
             </SortButton>
-            <SortButton active={sortKey === "stage"} onClick={() => setSortKey("stage")}>
+            <SortButton active={sort === "stage"} onClick={() => changeSort("stage")}>
               Stage
             </SortButton>
           </div>
         </div>
       </div>
 
-      {loadError && (
+      {listError && (
         <div
           role="alert"
           className="mt-4 flex items-center justify-between gap-4 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-sm text-rose-700"
         >
-          <span>{loadError}</span>
-          <button type="button" onClick={() => void loadCandidates()} className="font-medium underline">
+          <span>{listError}</span>
+          <button type="button" onClick={() => setReloadKey((key) => key + 1)} className="font-medium underline">
             Try again
           </button>
         </div>
@@ -200,7 +277,7 @@ export function CandidatesPage() {
             </tr>
           </thead>
           <tbody>
-            {loading && (
+            {initialLoad && (
               <tr>
                 <td colSpan={6} className="px-5 py-10 text-center text-muted">
                   Loading candidates...
@@ -208,7 +285,7 @@ export function CandidatesPage() {
               </tr>
             )}
 
-            {!loading && !loadError && candidates.length === 0 && (
+            {!listLoading && !listError && candidates.length === 0 && !hasFilters && (
               <tr>
                 <td colSpan={6} className="px-5 py-10 text-center text-muted">
                   No candidates yet. <Link to="/candidates/new" className="font-medium text-brand">Add the first one</Link>.
@@ -216,28 +293,18 @@ export function CandidatesPage() {
               </tr>
             )}
 
-            {!loading && candidates.length > 0 && visible.length === 0 && (
+            {!listLoading && !listError && candidates.length === 0 && hasFilters && (
               <tr>
                 <td colSpan={6} className="px-5 py-10 text-center text-muted">
                   No candidates match these filters.
-                  {hasFilters && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSearch("")
-                        setStageFilter("")
-                        setRoleFilter("")
-                      }}
-                      className="ml-2 font-medium text-brand"
-                    >
-                      Clear filters
-                    </button>
-                  )}
+                  <button type="button" onClick={clearFilters} className="ml-2 font-medium text-brand">
+                    Clear filters
+                  </button>
                 </td>
               </tr>
             )}
 
-            {visible.map((candidate) => (
+            {candidates.map((candidate) => (
               <tr key={candidate.id} className="border-b border-line last:border-b-0 hover:bg-page">
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
@@ -262,9 +329,12 @@ export function CandidatesPage() {
           </tbody>
         </table>
 
-        {!loading && candidates.length > 0 && (
-          <div className="border-t border-line px-5 py-3 text-sm text-muted">
-            Showing {visible.length} of {candidates.length} candidates
+        {!listError && !initialLoad && (
+          <div className="flex items-center justify-between border-t border-line px-5 py-3 text-sm text-muted">
+            <span>
+              Showing {candidates.length} of {total} candidates
+            </span>
+            {listLoading && <span>Updating...</span>}
           </div>
         )}
       </div>
