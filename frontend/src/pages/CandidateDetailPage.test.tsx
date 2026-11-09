@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { MemoryRouter, Route, Routes } from "react-router"
-import { ApiError, archiveCandidate, getCandidate, restoreCandidate, updateCandidateStage } from "../api/client"
+import { ApiError, archiveCandidate, getCandidate, listNotes, restoreCandidate, updateCandidateStage } from "../api/client"
 import type { CandidateDetail } from "../api/types"
 import { CandidateDetailPage } from "./CandidateDetailPage"
 
@@ -13,6 +13,7 @@ vi.mock("../api/client", async (importOriginal) => {
     updateCandidateStage: vi.fn(),
     archiveCandidate: vi.fn(),
     restoreCandidate: vi.fn(),
+    listNotes: vi.fn(),
   }
 })
 
@@ -43,6 +44,7 @@ const ARCHIVED: CandidateDetail = { ...ACTIVE, archived_at: "2026-11-09T10:00:00
 
 beforeEach(() => {
   vi.mocked(getCandidate).mockResolvedValue(ACTIVE)
+  vi.mocked(listNotes).mockResolvedValue([])
 })
 
 afterEach(() => {

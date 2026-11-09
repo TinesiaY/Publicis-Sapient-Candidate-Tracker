@@ -4,6 +4,7 @@ import type {
   CandidateDetail,
   CandidateFilters,
   NewRoleInput,
+  Note,
   Role,
   RoleDetail,
   StageName,
@@ -108,6 +109,19 @@ export function archiveCandidate(candidateId: number): Promise<CandidateDetail> 
 
 export function restoreCandidate(candidateId: number): Promise<CandidateDetail> {
   return request<CandidateDetail>(`/candidates/${candidateId}/restore`, { method: "POST" })
+}
+
+// Newest first, as the backend returns them.
+export function listNotes(candidateId: number): Promise<Note[]> {
+  return request<Note[]>(`/candidates/${candidateId}/notes`)
+}
+
+export function addNote(candidateId: number, body: string): Promise<Note> {
+  return request<Note>(`/candidates/${candidateId}/notes`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ body }),
+  })
 }
 
 export function getCandidateCounts(): Promise<CandidateCounts> {

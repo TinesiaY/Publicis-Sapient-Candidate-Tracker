@@ -2,7 +2,7 @@ import { Ban, ChevronDown, CircleCheck, Inbox, MessagesSquare, Plus, ScanSearch,
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
 import { useEffect, useRef, useState } from "react"
-import { Link, useSearchParams } from "react-router"
+import { Link, useNavigate, useSearchParams } from "react-router"
 import { getCandidateCounts, listCandidates, listRoles } from "../api/client"
 import type { Candidate, CandidateCounts, Role, SortOrder } from "../api/types"
 import { STAGES } from "../api/types"
@@ -41,6 +41,7 @@ function messageOf(error: unknown, fallback: string): string {
 
 export function CandidatesPage() {
   const [searchParams, setSearchParams] = useSearchParams()
+  const navigate = useNavigate()
 
   // The URL is the source of truth for the filters, so a refresh keeps them.
   // Values that the backend would reject are ignored here.
@@ -305,7 +306,15 @@ export function CandidatesPage() {
             )}
 
             {candidates.map((candidate) => (
-              <tr key={candidate.id} className="border-b border-line last:border-b-0 hover:bg-page">
+              <tr
+                key={candidate.id}
+                onClick={(event) => {
+                  // A link or button inside the row handles its own click.
+                  if ((event.target as Element).closest("a, button")) return
+                  navigate(`/candidates/${candidate.id}`)
+                }}
+                className="cursor-pointer border-b border-line last:border-b-0 hover:bg-page"
+              >
                 <td className="px-5 py-4">
                   <div className="flex items-center gap-3">
                     <Avatar name={candidate.name} />
@@ -326,13 +335,7 @@ export function CandidatesPage() {
                 <td className="px-5 py-4 text-muted">{candidate.source ?? "—"}</td>
                 <td className="px-5 py-4 text-muted">{formatDate(candidate.created_at)}</td>
                 <td className="px-5 py-4 text-right text-muted">
-                  <Link
-                    to={`/candidates/${candidate.id}`}
-                    aria-label={`Open ${candidate.name}`}
-                    className="ml-auto inline-flex text-muted hover:text-brand"
-                  >
-                    <ArrowUpRight className="size-4" aria-hidden="true" />
-                  </Link>
+                  <ArrowUpRight className="ml-auto size-4" aria-hidden="true" />
                 </td>
               </tr>
             ))}

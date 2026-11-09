@@ -6,6 +6,7 @@ import type { CandidateDetail, StageName } from "../api/types"
 import { STAGES } from "../api/types"
 import { AppShell } from "../components/AppShell"
 import { Avatar } from "../components/Avatar"
+import { NotesPanel } from "../components/NotesPanel"
 import { StageBadge } from "../components/StageBadge"
 import { formatDate } from "../lib/format"
 
@@ -282,10 +283,7 @@ export function CandidateDetailPage() {
             <h2 className="text-lg font-semibold">Resume summary</h2>
             <p className="mt-2 text-sm text-muted">AI summaries arrive in a later milestone.</p>
           </section>
-          <section className="rounded-xl border border-dashed border-line bg-white p-6">
-            <h2 className="text-lg font-semibold">Notes</h2>
-            <p className="mt-2 text-sm text-muted">Notes arrive in a later milestone.</p>
-          </section>
+          <NotesPanel candidateId={candidate.id} />
         </div>
       </div>
     </AppShell>

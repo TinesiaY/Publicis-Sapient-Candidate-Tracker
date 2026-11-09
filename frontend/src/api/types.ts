@@ -55,3 +55,11 @@ export interface CandidateFilters {
   // false lists active candidates only. true lists archived candidates only.
   archived?: boolean
 }
+
+// GET /candidates/{id}/notes. Notes are append-only: they cannot be edited or removed.
+export interface Note {
+  id: number
+  candidate_id: number
+  body: string
+  created_at: string
+}

@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react"
-import { MemoryRouter } from "react-router"
+import { MemoryRouter, Route, Routes } from "react-router"
+import type { Candidate } from "../api/types"
 import { getCandidateCounts, listCandidates, listRoles } from "../api/client"
 import { CandidatesPage } from "./CandidatesPage"
 
@@ -98,5 +99,33 @@ describe("CandidatesPage filters", () => {
     renderAt("/candidates")
 
     expect(await screen.findByText("Showing 0 of 3 candidates")).toBeTruthy()
+  })
+
+  it("opens the candidate when anywhere on the row is clicked", async () => {
+    const candidate: Candidate = {
+      id: 7,
+      name: "Ben Lee",
+      email: "ben@example.com",
+      phone: null,
+      role_id: 2,
+      role_name: "Frontend Engineer",
+      source: "LinkedIn",
+      stage: "Screening",
+      created_at: "2026-11-02T09:00:00Z",
+      archived_at: null,
+    }
+    vi.mocked(listCandidates).mockResolvedValue([candidate])
+    render(
+      <MemoryRouter initialEntries={["/candidates"]}>
+        <Routes>
+          <Route path="/candidates" element={<CandidatesPage />} />
+          <Route path="/candidates/:candidateId" element={<p>Candidate detail stub</p>} />
+        </Routes>
+      </MemoryRouter>,
+    )
+
+    fireEvent.click(await screen.findByText("ben@example.com"))
+
+    expect(await screen.findByText("Candidate detail stub")).toBeTruthy()
   })
 })
