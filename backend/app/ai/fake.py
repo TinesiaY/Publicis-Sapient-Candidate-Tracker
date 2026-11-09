@@ -24,6 +24,10 @@ class FakeProvider:
         self._on_call = on_call
         self.calls: list[tuple[str, str]] = []
 
+    def add_reply(self, reply: str | Exception) -> None:
+        """Queue one more reply, after the ones already queued."""
+        self._replies.append(reply)
+
     def generate(self, system: str, prompt: str) -> str:
         self.calls.append((system, prompt))
         if self._on_call is not None:

@@ -1,21 +1,33 @@
 """Shared FastAPI dependencies."""
 
 from collections.abc import Iterator
+from datetime import datetime
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Request
 from sqlalchemy.orm import Session
 
 from app.db import make_engine, make_session_factory
-from app.models import Candidate
+from app.models import Candidate, utc_now
+from app.worker import SummaryWorker
 
 engine = make_engine()
+# The app's real database. create_app uses it unless a test passes its own session factory.
 SessionLocal = make_session_factory(engine)
 
 
-def get_session() -> Iterator[Session]:
-    """Give each request its own database session, and close it when the request ends."""
-    with SessionLocal() as session:
+def get_session(request: Request) -> Iterator[Session]:
+    """Give each request its own session, from the factory the app was built with."""
+    with request.app.state.session_factory() as session:
         yield session
+
+
+def get_worker(request: Request) -> SummaryWorker:
+    return request.app.state.worker
+
+
+def get_clock() -> datetime:
+    """The current time. Tests replace this to move the clock forward."""
+    return utc_now()
 
 
 def find_candidate(session: Session, candidate_id: int) -> Candidate:

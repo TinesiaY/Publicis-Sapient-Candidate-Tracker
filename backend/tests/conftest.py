@@ -1,14 +1,39 @@
-"""Shared test fixtures: a fresh in-memory database for every test."""
+"""Shared test fixtures: a fresh in-memory database for every test, a manual executor and a fake provider.
+
+The app is built with create_app, so no test touches backend/data/app.db.
+"""
 
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
+from app.ai.fake import FakeProvider
 from app.db import Base, make_engine, make_session_factory
-from app.deps import get_session
-from app.main import app
+from app.main import create_app
 from app.models import Role
+
+
+class ManualExecutor:
+    """Holds submitted work until a test runs it, so a test can check the state before a job runs."""
+
+    def __init__(self) -> None:
+        self._queued: list[tuple] = []
+
+    def submit(self, fn, *args):
+        self._queued.append((fn, args))
+
+    def run_queued(self) -> None:
+        while self._queued:
+            fn, args = self._queued.pop(0)
+            fn(*args)
+
+    @property
+    def queued_count(self) -> int:
+        return len(self._queued)
+
+    def shutdown(self, wait: bool = True) -> None:
+        pass
 
 
 @pytest.fixture
@@ -40,15 +65,22 @@ def role_ids(session):
 
 
 @pytest.fixture
-def client(engine):
-    """An HTTP test client whose requests use the same in-memory database as the test."""
-    session_factory = make_session_factory(engine)
+def executor() -> ManualExecutor:
+    return ManualExecutor()
 
-    def override_get_session():
-        with session_factory() as session:
-            yield session
 
-    app.dependency_overrides[get_session] = override_get_session
+@pytest.fixture
+def provider() -> FakeProvider:
+    return FakeProvider([])
+
+
+@pytest.fixture
+def app(engine, executor, provider):
+    return create_app(session_factory=make_session_factory(engine), provider=provider, executor=executor)
+
+
+@pytest.fixture
+def client(app):
+    """An HTTP test client. Entering it runs the app's startup, including the startup sweep."""
     with TestClient(app) as test_client:
         yield test_client
-    app.dependency_overrides.clear()

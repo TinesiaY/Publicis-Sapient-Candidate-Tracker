@@ -7,12 +7,13 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.deps import find_candidate, get_session
+from app.deps import find_candidate, get_session, get_worker
 from app.models import Candidate, Role, Stage, utc_now
 from app.queries import SortOrder, candidate_list_query, stage_counts
 from app.resume_input import resolve_resume
 from app.schemas import CandidateCounts, CandidateCreate, CandidateDetail, CandidateSummary, StageUpdate
 from app.summaries import request_summary
+from app.worker import SummaryWorker
 
 router = APIRouter(prefix="/candidates", tags=["candidates"])
 
@@ -38,6 +39,7 @@ def create_candidate(
     data: Annotated[CandidateCreate, Form()],
     resume_file: UploadFile | None = File(None),
     session: Session = Depends(get_session),
+    worker: SummaryWorker = Depends(get_worker),
 ) -> Candidate:
     # Check the resume input first, so a bad upload is reported before any database lookup.
     resume = resolve_resume(data.resume_text, resume_file)
@@ -59,10 +61,11 @@ def create_candidate(
 
     candidate = Candidate(**data.model_dump(exclude={"resume_text"}), resume_text=resume)
     session.add(candidate)
+    job_id: int | None = None
     try:
         # The candidate and its summary request are saved together, or not at all.
         session.flush()
-        request_summary(session, candidate)
+        job_id = request_summary(session, candidate)
         session.commit()
     except IntegrityError as error:
         session.rollback()
@@ -70,6 +73,10 @@ def create_candidate(
         if _is_duplicate_application(error):
             raise HTTPException(status_code=409, detail=DUPLICATE_MESSAGE) from error
         raise
+
+    # Submit only after the commit, so the worker can read the job.
+    if job_id is not None:
+        worker.submit(job_id)
 
     # Load the saved values now, while the session is still open.
     session.refresh(candidate)
@@ -131,6 +138,7 @@ def replace_resume(
     resume_text: Annotated[str | None, Form()] = None,
     resume_file: UploadFile | None = File(None),
     session: Session = Depends(get_session),
+    worker: SummaryWorker = Depends(get_worker),
 ) -> Candidate:
     candidate = find_candidate(session, candidate_id)
     if candidate.archived_at is not None:
@@ -138,8 +146,10 @@ def replace_resume(
 
     # Only the resume and its summary request change. Stage, creation date and notes are left alone.
     candidate.resume_text = resolve_resume(resume_text, resume_file)
-    request_summary(session, candidate)
+    job_id = request_summary(session, candidate)
     session.commit()
+    if job_id is not None:
+        worker.submit(job_id)
     session.refresh(candidate)
     return candidate
 

@@ -42,6 +42,24 @@ The seed step creates `backend/data/app.db` with placeholder roles and candidate
 
 To start from a clean database, stop the backend, delete `backend/data/app.db`, and run `uv run python -m app.seed` again.
 
+### AI summaries and candidate data
+
+Each saved resume is summarised with Google's Gemini API, using the model `gemini-3.8-flash`. The backend reads the key from the `GEMINI_API_KEY` environment variable. Set it in the same terminal before you start the backend:
+
+```powershell
+$env:GEMINI_API_KEY = "your-key-here"
+```
+
+```bash
+export GEMINI_API_KEY="your-key-here"
+```
+
+Without a key, the app still runs and saving still works. Each summary then shows the error code `not_configured`.
+
+**Warning: read this before you add real candidate data.** This project is set up with a free Gemini API key. Google's Gemini API terms and pricing describe how content sent on the free tier may be used, including to improve Google's products. 
+
+Never commit the key to the repository.
+
 ## Run tests
 
 **Backend**
@@ -49,6 +67,13 @@ To start from a clean database, stop the backend, delete `backend/data/app.db`, 
 ```bash
 cd backend
 uv run pytest
+```
+
+The live test calls the real Gemini API. It is skipped unless `GEMINI_API_KEY` is set, and it uses the free daily quota:
+
+```bash
+cd backend
+uv run pytest -m live
 ```
 
 **Frontend**

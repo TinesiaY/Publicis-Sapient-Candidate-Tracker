@@ -8,6 +8,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.ai.schema import Highlight
 from app.models import Stage
 from app.text_rules import BLANK_CHARACTERS, has_nul, is_blank
 
@@ -147,3 +148,16 @@ class CandidateCounts(BaseModel):
 
     total: int
     by_stage: dict[str, int]
+
+
+class SummaryRead(BaseModel):
+    """GET /candidates/{id}/summary. The result fields are filled only when the job is ready."""
+
+    status: str
+    input_hash: str
+    created_at: datetime
+    error_code: str | None = None
+    summary: str | None = None
+    skills: list[str] | None = None
+    highlights: list[Highlight] | None = None
+    suspicious_input: bool | None = None

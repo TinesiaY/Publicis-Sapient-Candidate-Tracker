@@ -1,7 +1,7 @@
 """Summary requests: saving or replacing a resume records a summary request for its current text.
 
 A request is identified by three things: the resume's hash, the prompt version and the model.
-A result is reused only when all three match. Milestone 9 adds the worker that runs the requests.
+A result is reused only when all three match. The worker (app/worker.py) runs the requests.
 """
 
 from sqlalchemy import and_, select, update
@@ -13,11 +13,11 @@ from app.models import Candidate, SummaryJob
 from app.resume import resume_hash
 
 
-def request_summary(session: Session, candidate: Candidate) -> None:
-    """Ask for a summary of the candidate's current resume. The caller commits.
+def request_summary(session: Session, candidate: Candidate) -> int | None:
+    """Ask for a summary of the candidate's current resume. The caller commits, then submits the job.
 
-    Pending requests for anything other than this request are superseded. If a pending or ready
-    result already exists for this request, nothing new is recorded.
+    Returns the id of the new pending job, or None when a pending or ready job already covers this
+    request and nothing new was recorded. Pending requests for anything else are superseded.
     """
     current_hash = resume_hash(candidate.resume_text)
     same_request = and_(
@@ -46,13 +46,31 @@ def request_summary(session: Session, candidate: Candidate) -> None:
             same_request,
         )
     )
-    if existing is None:
-        session.add(
-            SummaryJob(
-                candidate_id=candidate.id,
-                status="pending",
-                input_hash=current_hash,
-                prompt_version=PROMPT_VERSION,
-                model=SUMMARY_MODEL,
-            )
+    if existing is not None:
+        return None
+
+    job = SummaryJob(
+        candidate_id=candidate.id,
+        status="pending",
+        input_hash=current_hash,
+        prompt_version=PROMPT_VERSION,
+        model=SUMMARY_MODEL,
+    )
+    session.add(job)
+    session.flush()  # Assigns the id, so the caller can submit the job after the commit.
+    return job.id
+
+
+def current_job(session: Session, candidate: Candidate) -> SummaryJob | None:
+    """The newest job for the candidate's current resume, made with the current prompt and model. Any status."""
+    return session.scalar(
+        select(SummaryJob)
+        .where(
+            SummaryJob.candidate_id == candidate.id,
+            SummaryJob.input_hash == resume_hash(candidate.resume_text),
+            SummaryJob.prompt_version == PROMPT_VERSION,
+            SummaryJob.model == SUMMARY_MODEL,
         )
+        .order_by(SummaryJob.created_at.desc(), SummaryJob.id.desc())
+        .limit(1)
+    )

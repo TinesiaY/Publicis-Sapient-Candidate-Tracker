@@ -3,8 +3,8 @@
 from typing import Protocol
 
 # The model every summary request is made with. It is part of a result's identity: a result made
-# by another model is never reused. Milestone 9 sets the real Gemini model here.
-SUMMARY_MODEL = "not-yet-configured"
+# by another model is never reused.
+SUMMARY_MODEL = "gemini-3.8-flash"
 
 
 class ProviderError(Exception):

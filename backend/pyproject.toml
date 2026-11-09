@@ -5,6 +5,7 @@ requires-python = ">=3.14"
 dependencies = [
     "email-validator>=2.3.0",
     "fastapi>=0.162.2",
+    "google-genai>=3.0.0",
     "python-multipart>=0.0.33",
     "sqlalchemy>=2.1.8",
     "uvicorn[standard]>=0.54.0",
@@ -19,3 +20,6 @@ dev = [
 [tool.pytest.ini_options]
 pythonpath = ["."]
 testpaths = ["tests"]
+markers = ["live: calls the real Gemini API and needs GEMINI_API_KEY. Run with: uv run pytest -m live"]
+# The live test is left out of the default run, so the tests never spend the free quota by accident.
+addopts = "-m 'not live'"
