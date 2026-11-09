@@ -34,3 +34,19 @@ Then open:
 - Backend API docs: http://127.0.0.1:8000/docs
 
 Stop either server with `Ctrl+C`.
+
+## Run tests
+
+**Backend**
+
+```bash
+cd backend
+uv run pytest
+```
+
+**Frontend**
+
+```bash
+cd frontend
+npm test
+```
