@@ -5,7 +5,6 @@ import { ApiError, archiveCandidate, getCandidate, restoreCandidate, updateCandi
 import type { CandidateDetail, StageName } from "../api/types"
 import { STAGES } from "../api/types"
 import { AppShell } from "../components/AppShell"
-import { Avatar } from "../components/Avatar"
 import { NotesPanel } from "../components/NotesPanel"
 import { ReplaceResumePanel } from "../components/ReplaceResumePanel"
 import { StageBadge } from "../components/StageBadge"
@@ -154,7 +153,6 @@ function CandidateDetailContent({ candidateId: id }: { candidateId: number }) {
     <AppShell breadcrumbs={[{ label: "Workspace" }, CANDIDATES_CRUMB, { label: candidate.name }]}>
       <div className="flex flex-wrap items-start justify-between gap-6">
         <div className="flex items-center gap-4">
-          <Avatar name={candidate.name} />
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h1 className="text-3xl font-semibold tracking-tight">{candidate.name}</h1>
