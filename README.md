@@ -4,7 +4,7 @@ This is a candidate tracking system to track candidates through a hiring pipelin
 
 ## Requirements
 
-- Python 3.14 or newer, with [uv](https://docs.astral.sh/uv/)
+- Python 3.14 or newer, with [uv](https://docs.astral.sh/uv/). By default uv downloads a matching Python when it needs one.
 - Node.js 22 or newer (tested with 24.15.0)
 
 ## Setup and run
@@ -42,9 +42,27 @@ The seed step creates `backend/data/app.db` with placeholder roles and candidate
 
 To start from a clean database, stop the backend, delete `backend/data/app.db`, and run `uv run python -m app.seed` again.
 
+To also summarise the sample resumes, run the seed with `--summarise`. It needs your Gemini key (see below) and runs one resume at a time. It also re-requests any summary that failed earlier, so the archived samples are covered too:
+
+```bash
+cd backend
+uv run python -m app.seed --summarise
+```
+
+Run it before you start the backend. When the backend starts, any summary still waiting is marked interrupted, and an interrupted summary can then only be retried from the candidate page, not for archived candidates.
+
+To write the sample summaries to a Markdown file, add `--report`:
+
+```bash
+cd backend
+uv run python -m app.seed --summarise --report ../docs/sample-summaries.md
+```
+
 ### AI summaries and candidate data
 
-Each saved resume is summarised with Google's Gemini API, using the model `gemini-3.5-flash-lite`. The backend reads the key from the `GEMINI_API_KEY` environment variable. Set it in the same terminal before you start the backend:
+Each saved resume is summarised with Google's Gemini API, using the model `gemini-3.5-flash-lite`. The backend reads the key from `GEMINI_API_KEY`. The simplest place is a file named `.env` in the `backend` folder: copy `backend/.env.example` to `backend/.env`, put your key after the `=`, and restart the backend.
+
+You can also set it in the terminal instead, before you start the backend. A value set in the terminal takes precedence over `.env`:
 
 ```powershell
 $env:GEMINI_API_KEY = "your-key-here"
