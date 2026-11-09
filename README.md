@@ -44,7 +44,7 @@ To start from a clean database, stop the backend, delete `backend/data/app.db`, 
 
 ### AI summaries and candidate data
 
-Each saved resume is summarised with Google's Gemini API, using the model `gemini-3.8-flash`. The backend reads the key from the `GEMINI_API_KEY` environment variable. Set it in the same terminal before you start the backend:
+Each saved resume is summarised with Google's Gemini API, using the model `gemini-3.5-flash-lite`. The backend reads the key from the `GEMINI_API_KEY` environment variable. Set it in the same terminal before you start the backend:
 
 ```powershell
 $env:GEMINI_API_KEY = "your-key-here"

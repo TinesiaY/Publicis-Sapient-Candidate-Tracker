@@ -4,7 +4,7 @@ from typing import Protocol
 
 # The model every summary request is made with. It is part of a result's identity: a result made
 # by another model is never reused.
-SUMMARY_MODEL = "gemini-3.8-flash"
+SUMMARY_MODEL = "gemini-3.5-flash-lite"
 
 
 class ProviderError(Exception):
