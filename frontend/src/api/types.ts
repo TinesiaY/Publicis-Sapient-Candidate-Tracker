@@ -2,6 +2,8 @@
 
 export const STAGES = ["Applied", "Screening", "Interview", "Offer", "Rejected"] as const
 
+export type StageName = (typeof STAGES)[number]
+
 export const SOURCES = ["Referral", "LinkedIn", "Careers page", "Wellfound", "Job board", "Website", "Other"] as const
 
 // The backend calls these roles. The UI calls them jobs.
@@ -33,6 +35,11 @@ export interface Candidate {
   archived_at: string | null
 }
 
+// GET /candidates/{id}. The detail adds the resume text.
+export interface CandidateDetail extends Candidate {
+  resume_text: string
+}
+
 export interface CandidateCounts {
   total: number
   by_stage: Record<string, number>
@@ -45,4 +52,6 @@ export interface CandidateFilters {
   roleId?: number
   search?: string
   sort?: SortOrder
+  // false lists active candidates only. true lists archived candidates only.
+  archived?: boolean
 }

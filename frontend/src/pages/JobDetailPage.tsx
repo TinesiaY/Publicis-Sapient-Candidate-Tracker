@@ -100,13 +100,18 @@ export function JobDetailPage() {
           ) : (
             <ul className="divide-y divide-line">
               {candidates.map((candidate) => (
-                <li key={candidate.id} className="flex items-center gap-3 px-6 py-4">
-                  <Avatar name={candidate.name} />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{candidate.name}</p>
-                    <p className="truncate text-sm text-muted">{candidate.email}</p>
-                  </div>
-                  <StageBadge stage={candidate.stage} />
+                <li key={candidate.id}>
+                  <Link
+                    to={`/candidates/${candidate.id}`}
+                    className="flex items-center gap-3 px-6 py-4 hover:bg-page"
+                  >
+                    <Avatar name={candidate.name} />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{candidate.name}</p>
+                      <p className="truncate text-sm text-muted">{candidate.email}</p>
+                    </div>
+                    <StageBadge stage={candidate.stage} />
+                  </Link>
                 </li>
               ))}
             </ul>

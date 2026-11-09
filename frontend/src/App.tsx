@@ -1,4 +1,6 @@
 import { Navigate, Route, Routes } from "react-router"
+import { ArchivePage } from "./pages/ArchivePage"
+import { CandidateDetailPage } from "./pages/CandidateDetailPage"
 import { CandidatesPage } from "./pages/CandidatesPage"
 import { JobDetailPage } from "./pages/JobDetailPage"
 import { JobNewPage } from "./pages/JobNewPage"
@@ -11,6 +13,8 @@ export default function App() {
       <Route path="/" element={<Navigate to="/candidates" replace />} />
       <Route path="/candidates" element={<CandidatesPage />} />
       <Route path="/candidates/new" element={<NewCandidatePage />} />
+      <Route path="/candidates/:candidateId" element={<CandidateDetailPage />} />
+      <Route path="/archive" element={<ArchivePage />} />
       <Route path="/jobs" element={<JobsPage />} />
       <Route path="/jobs/new" element={<JobNewPage />} />
       <Route path="/jobs/:jobId" element={<JobDetailPage />} />

@@ -310,7 +310,11 @@ export function CandidatesPage() {
                   <div className="flex items-center gap-3">
                     <Avatar name={candidate.name} />
                     <div>
-                      <p className="font-medium">{candidate.name}</p>
+                      <p className="font-medium">
+                        <Link to={`/candidates/${candidate.id}`} className="hover:text-brand">
+                          {candidate.name}
+                        </Link>
+                      </p>
                       <p className="text-muted">{candidate.email}</p>
                     </div>
                   </div>
@@ -322,7 +326,13 @@ export function CandidatesPage() {
                 <td className="px-5 py-4 text-muted">{candidate.source ?? "—"}</td>
                 <td className="px-5 py-4 text-muted">{formatDate(candidate.created_at)}</td>
                 <td className="px-5 py-4 text-right text-muted">
-                  <ArrowUpRight className="ml-auto size-4" aria-hidden="true" />
+                  <Link
+                    to={`/candidates/${candidate.id}`}
+                    aria-label={`Open ${candidate.name}`}
+                    className="ml-auto inline-flex text-muted hover:text-brand"
+                  >
+                    <ArrowUpRight className="size-4" aria-hidden="true" />
+                  </Link>
                 </td>
               </tr>
             ))}

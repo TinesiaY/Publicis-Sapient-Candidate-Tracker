@@ -53,15 +53,17 @@ export function AppShell({ children, breadcrumbs, candidateCount }: AppShellProp
               </span>
             </NavLink>
 
-            <span
-              className={`${NAV_ITEM} cursor-not-allowed text-muted/70`}
-              title="Archive arrives in a later milestone"
+            <NavLink
+              to="/archive"
+              className={({ isActive }) =>
+                `${NAV_ITEM} ${isActive ? "bg-white text-brand shadow-sm" : "text-muted hover:text-ink"}`
+              }
             >
               <span className="flex items-center gap-3">
                 <Archive className="size-5" aria-hidden="true" />
                 Archive
               </span>
-            </span>
+            </NavLink>
           </nav>
         </aside>
 

@@ -1,4 +1,13 @@
-import type { Candidate, CandidateCounts, CandidateFilters, NewRoleInput, Role, RoleDetail } from "./types"
+import type {
+  Candidate,
+  CandidateCounts,
+  CandidateDetail,
+  CandidateFilters,
+  NewRoleInput,
+  Role,
+  RoleDetail,
+  StageName,
+} from "./types"
 
 // The backend allows requests from http://localhost:5173 (see backend/app/main.py).
 const API_URL = "http://127.0.0.1:8000"
@@ -70,12 +79,35 @@ export function buildCandidateQuery(filters: CandidateFilters): string {
   if (filters.sort && filters.sort !== "added") {
     params.set("sort", filters.sort)
   }
+  if (filters.archived !== undefined) {
+    params.set("archived", String(filters.archived))
+  }
   const query = params.toString()
   return query ? `?${query}` : ""
 }
 
 export function listCandidates(filters: CandidateFilters = {}): Promise<Candidate[]> {
   return request<Candidate[]>(`/candidates${buildCandidateQuery(filters)}`)
+}
+
+export function getCandidate(candidateId: number): Promise<CandidateDetail> {
+  return request<CandidateDetail>(`/candidates/${candidateId}`)
+}
+
+export function updateCandidateStage(candidateId: number, stage: StageName): Promise<CandidateDetail> {
+  return request<CandidateDetail>(`/candidates/${candidateId}/stage`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ stage }),
+  })
+}
+
+export function archiveCandidate(candidateId: number): Promise<CandidateDetail> {
+  return request<CandidateDetail>(`/candidates/${candidateId}/archive`, { method: "POST" })
+}
+
+export function restoreCandidate(candidateId: number): Promise<CandidateDetail> {
+  return request<CandidateDetail>(`/candidates/${candidateId}/restore`, { method: "POST" })
 }
 
 export function getCandidateCounts(): Promise<CandidateCounts> {
