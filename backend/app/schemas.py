@@ -110,6 +110,37 @@ class StageUpdate(BaseModel):
     stage: Stage
 
 
+NOTE_MAX_LENGTH = 2000
+
+
+class NoteCreate(BaseModel):
+    """Body of POST /candidates/{id}/notes (sent as JSON)."""
+
+    body: str
+
+    @field_validator("body")
+    @classmethod
+    def check_body(cls, value: str) -> str:
+        _reject_nul(value)
+        if is_blank(value):
+            raise ValueError("must not be blank")
+        value = value.strip(BLANK_CHARACTERS)
+        if len(value) > NOTE_MAX_LENGTH:
+            raise ValueError(f"must be {NOTE_MAX_LENGTH} characters or fewer")
+        return value
+
+
+class NoteRead(BaseModel):
+    """One note in a candidate's history."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    candidate_id: int
+    body: str
+    created_at: datetime
+
+
 class CandidateCounts(BaseModel):
     """GET /candidates/counts. Every stage appears, even when its count is 0."""
 

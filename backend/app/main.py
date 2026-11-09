@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.routers import candidates, roles
+from app.routers import candidates, notes, roles
 
 app = FastAPI(title="Candidate Tracker API")
 
@@ -14,6 +14,7 @@ app.add_middleware(
 
 app.include_router(candidates.router)
 app.include_router(roles.router)
+app.include_router(notes.router)
 
 
 @app.get("/health")

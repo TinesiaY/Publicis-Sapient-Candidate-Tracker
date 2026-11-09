@@ -7,7 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.deps import get_session
+from app.deps import find_candidate, get_session
 from app.models import Candidate, Role, Stage, utc_now
 from app.queries import SortOrder, candidate_list_query, stage_counts
 from app.schemas import CandidateCounts, CandidateCreate, CandidateDetail, CandidateSummary, StageUpdate
@@ -28,13 +28,6 @@ def _is_duplicate_application(error: IntegrityError) -> bool:
     """
     message = str(error.orig)
     return "candidates.email" in message and "candidates.role_id" in message
-
-
-def _find_candidate(session: Session, candidate_id: int) -> Candidate:
-    candidate = session.get(Candidate, candidate_id)
-    if candidate is None:
-        raise HTTPException(status_code=404, detail="Candidate not found")
-    return candidate
 
 
 @router.post("", status_code=201, response_model=CandidateDetail)
@@ -102,7 +95,7 @@ def get_candidate_counts(session: Session = Depends(get_session)) -> CandidateCo
 
 @router.get("/{candidate_id}", response_model=CandidateDetail)
 def get_candidate(candidate_id: int, session: Session = Depends(get_session)) -> Candidate:
-    return _find_candidate(session, candidate_id)
+    return find_candidate(session, candidate_id)
 
 
 @router.patch("/{candidate_id}/stage", response_model=CandidateDetail)
@@ -111,7 +104,7 @@ def change_stage(
     data: StageUpdate,
     session: Session = Depends(get_session),
 ) -> Candidate:
-    candidate = _find_candidate(session, candidate_id)
+    candidate = find_candidate(session, candidate_id)
     if candidate.archived_at is not None:
         raise HTTPException(status_code=409, detail=ARCHIVED_STAGE_MESSAGE)
 
@@ -124,7 +117,7 @@ def change_stage(
 
 @router.post("/{candidate_id}/archive", response_model=CandidateDetail)
 def archive_candidate(candidate_id: int, session: Session = Depends(get_session)) -> Candidate:
-    candidate = _find_candidate(session, candidate_id)
+    candidate = find_candidate(session, candidate_id)
     # Archiving twice keeps the first archive time.
     if candidate.archived_at is None:
         candidate.archived_at = utc_now()
@@ -135,7 +128,7 @@ def archive_candidate(candidate_id: int, session: Session = Depends(get_session)
 
 @router.post("/{candidate_id}/restore", response_model=CandidateDetail)
 def restore_candidate(candidate_id: int, session: Session = Depends(get_session)) -> Candidate:
-    candidate = _find_candidate(session, candidate_id)
+    candidate = find_candidate(session, candidate_id)
     # Restoring an active candidate changes nothing.
     if candidate.archived_at is not None:
         candidate.archived_at = None
