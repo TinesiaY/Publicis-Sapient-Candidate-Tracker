@@ -133,7 +133,7 @@ def test_retry_on_an_archived_candidate_is_refused_with_409(client, provider, ex
     provider.add_reply(ProviderError("provider_error"))
     candidate_id = create(client, role_ids["backend"])
     executor.run_queued()
-    assert client.post(f"/candidates/{candidate_id}/archive").status_code == 200
+    assert client.post(f"/api/candidates/{candidate_id}/archive").status_code == 200
 
     response = retry(client, candidate_id)
 
@@ -142,7 +142,7 @@ def test_retry_on_an_archived_candidate_is_refused_with_409(client, provider, ex
 
 
 def test_summary_of_an_unknown_candidate_is_404(client):
-    assert client.get("/candidates/999/summary").status_code == 404
+    assert client.get("/api/candidates/999/summary").status_code == 404
 
 
 def test_a_failure_while_recording_the_request_leaves_no_candidate_behind(client, role_ids, monkeypatch):
@@ -154,7 +154,7 @@ def test_a_failure_while_recording_the_request_leaves_no_candidate_behind(client
     monkeypatch.setattr("app.routers.candidates.request_summary", broken)
 
     with pytest.raises(RuntimeError):
-        client.post("/candidates", data=form(role_ids["backend"]))
+        client.post("/api/candidates", data=form(role_ids["backend"]))
 
     with client.app.state.session_factory() as session:
         assert session.scalar(select(func.count()).select_from(Candidate)) == 0
@@ -193,7 +193,7 @@ def test_regenerate_on_an_archived_candidate_is_refused_with_409(client, provide
     provider.add_reply(valid_reply())
     candidate_id = create(client, role_ids["backend"])
     executor.run_queued()
-    assert client.post(f"/candidates/{candidate_id}/archive").status_code == 200
+    assert client.post(f"/api/candidates/{candidate_id}/archive").status_code == 200
 
     response = regenerate(client, candidate_id)
 

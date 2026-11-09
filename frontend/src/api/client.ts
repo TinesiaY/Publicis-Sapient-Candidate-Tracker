@@ -12,8 +12,10 @@ import type {
 } from "./types"
 import type { ResumeInputValue } from "../lib/validateCandidate"
 
-// The backend allows requests from http://localhost:5173 (see backend/app/main.py).
-const API_URL = "http://127.0.0.1:8000"
+// The API lives under /api. The dev server calls the backend directly, and the backend allows requests from
+// http://localhost:5173 (see backend/app/main.py). A production build sets VITE_API_URL to /api (frontend/.env.production),
+// so the built site calls the same server that serves it.
+const API_URL = import.meta.env.VITE_API_URL ?? "http://127.0.0.1:8000/api"
 
 export class ApiError extends Error {
   readonly status: number

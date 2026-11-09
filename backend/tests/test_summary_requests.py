@@ -28,7 +28,7 @@ def jobs_for(session, candidate_id):
 
 
 def test_saving_a_candidate_records_one_pending_summary_request(client, session, role_ids):
-    candidate = client.post("/candidates", data=form(role_ids["backend"])).json()
+    candidate = client.post("/api/candidates", data=form(role_ids["backend"])).json()
 
     jobs = jobs_for(session, candidate["id"])
 
@@ -39,9 +39,9 @@ def test_saving_a_candidate_records_one_pending_summary_request(client, session,
 
 
 def test_replacing_the_resume_supersedes_the_old_request_and_adds_a_new_one(client, session, role_ids):
-    candidate = client.post("/candidates", data=form(role_ids["backend"])).json()
+    candidate = client.post("/api/candidates", data=form(role_ids["backend"])).json()
 
-    client.put(f"/candidates/{candidate['id']}/resume", data={"resume_text": "Senior developer"})
+    client.put(f"/api/candidates/{candidate['id']}/resume", data={"resume_text": "Senior developer"})
 
     jobs = jobs_for(session, candidate["id"])
     assert [job.status for job in jobs] == ["superseded", "pending"]
@@ -49,18 +49,18 @@ def test_replacing_the_resume_supersedes_the_old_request_and_adds_a_new_one(clie
 
 
 def test_replacing_with_the_same_text_adds_no_request(client, session, role_ids):
-    candidate = client.post("/candidates", data=form(role_ids["backend"])).json()
+    candidate = client.post("/api/candidates", data=form(role_ids["backend"])).json()
 
-    client.put(f"/candidates/{candidate['id']}/resume", data={"resume_text": "Python developer, 2 years"})
+    client.put(f"/api/candidates/{candidate['id']}/resume", data={"resume_text": "Python developer, 2 years"})
 
     assert len(jobs_for(session, candidate["id"])) == 1
 
 
 def test_a_refused_replace_records_nothing(client, session, role_ids):
-    candidate = client.post("/candidates", data=form(role_ids["backend"])).json()
-    client.post(f"/candidates/{candidate['id']}/archive")
+    candidate = client.post("/api/candidates", data=form(role_ids["backend"])).json()
+    client.post(f"/api/candidates/{candidate['id']}/archive")
 
-    client.put(f"/candidates/{candidate['id']}/resume", data={"resume_text": "Senior developer"})
+    client.put(f"/api/candidates/{candidate['id']}/resume", data={"resume_text": "Senior developer"})
 
     jobs = jobs_for(session, candidate["id"])
     assert len(jobs) == 1
@@ -68,9 +68,9 @@ def test_a_refused_replace_records_nothing(client, session, role_ids):
 
 
 def test_a_candidate_with_a_pasted_and_an_uploaded_resume_share_the_same_request_text(client, session, role_ids):
-    pasted = client.post("/candidates", data=form(role_ids["backend"], email="pasted@example.com")).json()
+    pasted = client.post("/api/candidates", data=form(role_ids["backend"], email="pasted@example.com")).json()
     uploaded = client.post(
-        "/candidates",
+        "/api/candidates",
         data=form(role_ids["frontend"], email="uploaded@example.com", resume_text=""),
         files={"resume_file": ("resume.txt", b"Python developer, 2 years", "text/plain")},
     ).json()

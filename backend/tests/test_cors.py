@@ -3,7 +3,7 @@
 
 def test_frontend_origin_is_allowed(client):
     response = client.options(
-        "/candidates",
+        "/api/candidates",
         headers={
             "Origin": "http://localhost:5173",
             "Access-Control-Request-Method": "GET",
@@ -16,7 +16,7 @@ def test_frontend_origin_is_allowed(client):
 
 def test_other_origins_are_not_allowed(client):
     response = client.options(
-        "/candidates",
+        "/api/candidates",
         headers={
             "Origin": "https://example.com",
             "Access-Control-Request-Method": "GET",

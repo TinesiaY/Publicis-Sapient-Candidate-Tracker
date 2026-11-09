@@ -23,7 +23,7 @@ def candidate_form(role_id, **overrides):
 
 def test_valid_post_returns_201_and_lowercases_email(client, role_ids):
     response = client.post(
-        "/candidates",
+        "/api/candidates",
         data=candidate_form(role_ids["backend"], email="Ann@Example.com"),
     )
 
@@ -37,7 +37,7 @@ def test_valid_post_returns_201_and_lowercases_email(client, role_ids):
 
 
 def test_created_at_is_returned_with_utc_offset(client, role_ids):
-    response = client.post("/candidates", data=candidate_form(role_ids["backend"]))
+    response = client.post("/api/candidates", data=candidate_form(role_ids["backend"]))
 
     created_at = datetime.fromisoformat(response.json()["created_at"])
     assert created_at.utcoffset() == timedelta(0)
@@ -45,7 +45,7 @@ def test_created_at_is_returned_with_utc_offset(client, role_ids):
 
 def test_bad_email_returns_422(client, role_ids):
     response = client.post(
-        "/candidates",
+        "/api/candidates",
         data=candidate_form(role_ids["backend"], email="not-an-email"),
     )
 
@@ -55,7 +55,7 @@ def test_bad_email_returns_422(client, role_ids):
 @pytest.mark.parametrize("resume_text", ["", "   \n  ", "\n\t"])
 def test_blank_resume_returns_422(client, role_ids, resume_text):
     response = client.post(
-        "/candidates",
+        "/api/candidates",
         data=candidate_form(role_ids["backend"], resume_text=resume_text),
     )
 
@@ -64,7 +64,7 @@ def test_blank_resume_returns_422(client, role_ids, resume_text):
 
 def test_null_character_in_resume_returns_422_not_409(client, role_ids):
     response = client.post(
-        "/candidates",
+        "/api/candidates",
         data=candidate_form(role_ids["backend"], resume_text="\x00abc"),
     )
 
@@ -73,7 +73,7 @@ def test_null_character_in_resume_returns_422_not_409(client, role_ids):
 
 def test_null_character_in_name_returns_422(client, role_ids):
     response = client.post(
-        "/candidates",
+        "/api/candidates",
         data=candidate_form(role_ids["backend"], name="Ann\x00Tan"),
     )
 
@@ -84,39 +84,39 @@ def test_missing_resume_returns_422(client, role_ids):
     form = candidate_form(role_ids["backend"])
     del form["resume_text"]
 
-    response = client.post("/candidates", data=form)
+    response = client.post("/api/candidates", data=form)
 
     assert response.status_code == 422
 
 
 def test_same_email_and_role_returns_409(client, role_ids):
     form = candidate_form(role_ids["backend"])
-    assert client.post("/candidates", data=form).status_code == 201
+    assert client.post("/api/candidates", data=form).status_code == 201
 
-    response = client.post("/candidates", data=form)
+    response = client.post("/api/candidates", data=form)
 
     assert response.status_code == 409
 
 
 def test_same_email_with_another_role_returns_201(client, role_ids):
-    assert client.post("/candidates", data=candidate_form(role_ids["backend"])).status_code == 201
+    assert client.post("/api/candidates", data=candidate_form(role_ids["backend"])).status_code == 201
 
-    response = client.post("/candidates", data=candidate_form(role_ids["frontend"]))
+    response = client.post("/api/candidates", data=candidate_form(role_ids["frontend"]))
 
     assert response.status_code == 201
 
 
 def test_unknown_role_returns_422(client, role_ids):
-    response = client.post("/candidates", data=candidate_form(role_id=999))
+    response = client.post("/api/candidates", data=candidate_form(role_id=999))
 
     assert response.status_code == 422
 
 
 def test_list_returns_created_candidates_without_resume_text(client, role_ids):
-    client.post("/candidates", data=candidate_form(role_ids["backend"]))
-    client.post("/candidates", data=candidate_form(role_ids["frontend"]))
+    client.post("/api/candidates", data=candidate_form(role_ids["backend"]))
+    client.post("/api/candidates", data=candidate_form(role_ids["frontend"]))
 
-    response = client.get("/candidates")
+    response = client.get("/api/candidates")
 
     assert response.status_code == 200
     rows = response.json()
@@ -127,9 +127,9 @@ def test_list_returns_created_candidates_without_resume_text(client, role_ids):
 
 
 def test_detail_returns_candidate_with_resume_text(client, role_ids):
-    created = client.post("/candidates", data=candidate_form(role_ids["backend"])).json()
+    created = client.post("/api/candidates", data=candidate_form(role_ids["backend"])).json()
 
-    response = client.get(f"/candidates/{created['id']}")
+    response = client.get(f"/api/candidates/{created['id']}")
 
     assert response.status_code == 200
     body = response.json()
@@ -138,7 +138,7 @@ def test_detail_returns_candidate_with_resume_text(client, role_ids):
 
 
 def test_unknown_id_returns_404(client):
-    response = client.get("/candidates/999")
+    response = client.get("/api/candidates/999")
 
     assert response.status_code == 404
 

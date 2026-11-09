@@ -26,26 +26,26 @@ def form(role_id: int, resume: str = ANN, email: str = "ann@example.com") -> dic
 
 
 def create(client, role_id: int, resume: str = ANN, email: str = "ann@example.com") -> int:
-    response = client.post("/candidates", data=form(role_id, resume, email))
+    response = client.post("/api/candidates", data=form(role_id, resume, email))
     assert response.status_code == 201, response.text
     return response.json()["id"]
 
 
 def replace(client, candidate_id: int, resume: str) -> None:
-    response = client.put(f"/candidates/{candidate_id}/resume", data={"resume_text": resume})
+    response = client.put(f"/api/candidates/{candidate_id}/resume", data={"resume_text": resume})
     assert response.status_code == 200, response.text
 
 
 def summary(client, candidate_id: int):
-    return client.get(f"/candidates/{candidate_id}/summary")
+    return client.get(f"/api/candidates/{candidate_id}/summary")
 
 
 def retry(client, candidate_id: int):
-    return client.post(f"/candidates/{candidate_id}/summary/retry")
+    return client.post(f"/api/candidates/{candidate_id}/summary/retry")
 
 
 def regenerate(client, candidate_id: int):
-    return client.post(f"/candidates/{candidate_id}/summary/regenerate")
+    return client.post(f"/api/candidates/{candidate_id}/summary/regenerate")
 
 
 def job_rows(client, candidate_id: int) -> list[dict]:

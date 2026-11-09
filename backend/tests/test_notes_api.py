@@ -13,7 +13,7 @@ BASE_TIME = datetime(2026, 11, 1, 9, 0, tzinfo=timezone.utc)
 
 def create_candidate(client, role_id, email="ann@example.com", name="Ann Tan"):
     response = client.post(
-        "/candidates",
+        "/api/candidates",
         data={
             "name": name,
             "email": email,
@@ -28,7 +28,7 @@ def create_candidate(client, role_id, email="ann@example.com", name="Ann Tan"):
 
 
 def notes_url(candidate_id):
-    return f"/candidates/{candidate_id}/notes"
+    return f"/api/candidates/{candidate_id}/notes"
 
 
 # Adding notes.
@@ -170,7 +170,7 @@ def test_the_database_blocks_changes_to_a_saved_note(client, session, role_ids):
 
 def test_archived_candidate_can_still_get_notes(client, role_ids):
     candidate = create_candidate(client, role_ids["backend"])
-    client.post(f"/candidates/{candidate['id']}/archive")
+    client.post(f"/api/candidates/{candidate['id']}/archive")
 
     response = client.post(notes_url(candidate["id"]), json={"body": "Left a voicemail"})
 
@@ -182,9 +182,9 @@ def test_notes_survive_archive_and_restore_unchanged(client, role_ids):
     client.post(notes_url(candidate["id"]), json={"body": "Strong systems thinking"})
     before = client.get(notes_url(candidate["id"])).json()
 
-    client.post(f"/candidates/{candidate['id']}/archive")
+    client.post(f"/api/candidates/{candidate['id']}/archive")
     client.post(notes_url(candidate["id"]), json={"body": "Added while archived"})
-    client.post(f"/candidates/{candidate['id']}/restore")
+    client.post(f"/api/candidates/{candidate['id']}/restore")
 
     after = client.get(notes_url(candidate["id"])).json()
     assert [row["body"] for row in after] == ["Added while archived", "Strong systems thinking"]

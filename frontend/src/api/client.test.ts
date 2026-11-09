@@ -48,7 +48,7 @@ describe("summary calls", () => {
 
     await getSummary(7)
 
-    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/candidates/7/summary", undefined)
+    expect(fetchMock).toHaveBeenCalledWith("http://127.0.0.1:8000/api/candidates/7/summary", undefined)
   })
 
   it("posts a retry and a regenerate to their own paths", async () => {
@@ -57,9 +57,9 @@ describe("summary calls", () => {
     await retrySummary(7)
     await regenerateSummary(7)
 
-    expect(fetchMock.mock.calls[0]).toEqual(["http://127.0.0.1:8000/candidates/7/summary/retry", { method: "POST" }])
+    expect(fetchMock.mock.calls[0]).toEqual(["http://127.0.0.1:8000/api/candidates/7/summary/retry", { method: "POST" }])
     expect(fetchMock.mock.calls[1]).toEqual([
-      "http://127.0.0.1:8000/candidates/7/summary/regenerate",
+      "http://127.0.0.1:8000/api/candidates/7/summary/regenerate",
       { method: "POST" },
     ])
   })
