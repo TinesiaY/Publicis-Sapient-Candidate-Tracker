@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 
 from app.db import Base, make_engine
+from app.models import Role
 
 
 @pytest.fixture
@@ -24,3 +25,12 @@ def engine():
 def session(engine):
     with Session(engine) as session:
         yield session
+
+@pytest.fixture
+def role_ids(session):
+    backend = Role(name="Backend Engineer", jd_text="Build APIs")
+    frontend = Role(name="Frontend Engineer", jd_text="Build UIs")
+    session.add_all([backend, frontend])
+    session.commit()
+    return {"backend": backend.id, "frontend": frontend.id}
+
