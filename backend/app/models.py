@@ -50,7 +50,8 @@ class Role(Base):
 
     @property
     def candidate_count(self) -> int:
-        return len(self.candidates)
+        """Active candidates only. Archived applications do not count."""
+        return sum(1 for candidate in self.candidates if candidate.archived_at is None)
 
 
 class Candidate(Base):

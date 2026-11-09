@@ -8,6 +8,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, field_validator
 
+from app.models import Stage
 from app.text_rules import BLANK_CHARACTERS, has_nul, is_blank
 
 
@@ -101,6 +102,12 @@ class CandidateDetail(CandidateSummary):
     """GET /candidates/{id} and the POST response. Adds the resume text."""
 
     resume_text: str
+
+
+class StageUpdate(BaseModel):
+    """Body of PATCH /candidates/{id}/stage (sent as JSON)."""
+
+    stage: Stage
 
 
 class CandidateCounts(BaseModel):
