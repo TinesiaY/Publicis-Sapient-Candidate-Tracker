@@ -23,9 +23,10 @@ def _is_timeout(error: Exception) -> bool:
 
 
 class GeminiProvider:
-    def __init__(self, api_key: str, model_name: str) -> None:
+    def __init__(self, api_key: str, model_name: str, client: genai.Client | None = None) -> None:
         self.model_name = model_name
-        self._client = genai.Client(
+        # A client can be passed in, so tests can replace the network call without reaching into the SDK.
+        self._client = client or genai.Client(
             api_key=api_key,
             http_options=types.HttpOptions(
                 timeout=REQUEST_TIMEOUT_MS,

@@ -5,29 +5,24 @@ they never touch backend/data/app.db.
 """
 
 import logging
-import os
 from collections.abc import AsyncIterator
 from concurrent.futures import Executor, ThreadPoolExecutor
 from contextlib import asynccontextmanager
-from pathlib import Path
 
-from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import sessionmaker
 
-from app.ai.gemini_provider import NotConfiguredProvider, make_provider
+from app.ai.gemini_provider import NotConfiguredProvider
 from app.ai.jobs import sweep_interrupted
-from app.ai.provider import SUMMARY_MODEL, SummaryProvider
+from app.ai.provider import SummaryProvider
+from app.config import summary_provider
 from app.deps import SessionLocal
 from app.models import utc_now
 from app.routers import candidates, notes, roles, summaries
 from app.worker import SummaryWorker
 
 logger = logging.getLogger(__name__)
-
-# Read backend/.env, so the Gemini key can be kept there. A variable already set in the environment takes precedence.
-load_dotenv(Path(__file__).resolve().parent.parent / ".env")
 
 
 def create_app(
@@ -38,7 +33,7 @@ def create_app(
     """Build the app. By default it uses the real database, the Gemini provider if GEMINI_API_KEY is set, and one background thread."""
     factory = session_factory or SessionLocal
     if provider is None:
-        provider = make_provider(os.environ.get("GEMINI_API_KEY"), SUMMARY_MODEL)
+        provider = summary_provider()
 
     @asynccontextmanager
     async def lifespan(app: FastAPI) -> AsyncIterator[None]:
