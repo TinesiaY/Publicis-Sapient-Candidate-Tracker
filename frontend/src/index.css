@@ -1,1 +1,23 @@
 @import "tailwindcss";
+
+/* Design tokens taken from the Figma design. */
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  --color-page: #fbfbfa;
+  --color-sidebar: #f3f3f0;
+  --color-line: #e5e5e0;
+  --color-ink: #1c1c22;
+  --color-muted: #6b6b75;
+  --color-brand: #5b52c9;
+  --color-brand-hover: #4d44b8;
+  --color-brand-soft: #eeedfb;
+  --color-brand-ink: #4a42b8;
+}
+
+body {
+  background-color: var(--color-page);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
